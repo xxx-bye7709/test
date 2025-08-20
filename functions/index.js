@@ -1710,6 +1710,8 @@ exports.searchProducts = functions
 /**
  * 商品レビュー記事生成
  */
+// index.jsのgenerateProductReview関数を以下に置き換えてください
+
 exports.generateProductReview = functions
   .region('asia-northeast1')
   .runWith({
@@ -1719,65 +1721,121 @@ exports.generateProductReview = functions
   .https.onRequest(async (req, res) => {
     console.log('=== generateProductReview START ===');
     
-    // CORS
+    // CORS設定
     res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
+    res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.set('Access-Control-Allow-Headers', 'Content-Type');
     
+    // OPTIONSリクエストへの対応
     if (req.method === 'OPTIONS') {
-      return res.status(204).send('');
+      res.status(204).send('');
+      return;
     }
     
-    try {
-      // 必要なモジュールを直接require
-      const DMMApi = require('./lib/dmm-api');
-      const BlogAutomationTool = require('./lib/blog-tool');
-      
-      const { productId, keyword, autoPost, productData } = req.body;
-      
-      console.log('Request params:', { productId, keyword, autoPost });
-      
-      const dmmApi = new DMMApi();
-      let product = productData || await dmmApi.getProductDetails(productId || 'test-001');
-      const reviewData = dmmApi.prepareReviewData(product);
-      
-      const blogTool = new BlogAutomationTool();
-      const article = await blogTool.generateProductReviewArticle(reviewData, {
-        keyword: keyword || 'レビュー'
+    // POSTメソッドのみ許可
+    if (req.method !== 'POST') {
+      res.status(405).json({ 
+        success: false, 
+        error: 'Method Not Allowed' 
       });
+      return;
+    }
+
+    try {
+      console.log('Request body:', JSON.stringify(req.body));
       
-      let response = {
-  success: true,
-  title: article.title || 'Product Review',
-  product: {
-    name: reviewData.title || 'Product',
-    price: reviewData.price || 'Price',
-    rating: reviewData.rating || 0
-  }
-};
+      // BlogToolのインスタンスを作成（BlogAutomationToolではなく）
+      const BlogTool = require('./lib/blog-tool');
+      const blogTool = new BlogTool();
       
-      if (autoPost !== false) {
-        console.log('Posting to WordPress...');
-        try {
-          const postResult = await blogTool.postToWordPress(article);
-          // postResultが成功した場合
-          if (postResult && postResult.success) {
-            response.postId = postResult.postId;
-            response.url = postResult.url;
-            response.message = '✅ WordPress投稿完了';
-          }
-        } catch (e) {
-          console.error('WP error:', e);
+      // パラメータの取得
+      const { 
+        productId = 'test-001', 
+        keyword = 'レビュー', 
+        autoPost = true,
+        productData = {
+          title: 'テスト商品',
+          description: 'テスト商品の説明',
+          price: '1,000円',
+          category: 'テスト'
         }
+      } = req.body;
+
+      console.log('Parameters:', {
+        productId,
+        keyword,
+        autoPost,
+        hasProductData: !!productData
+      });
+
+      // 記事の生成
+      console.log('🔍 Generating article...');
+      const article = await blogTool.generateProductReviewArticle(
+        productData,
+        keyword
+      );
+
+      console.log('Article generated:', {
+        title: article.title,
+        contentLength: article.content?.length,
+        hasContent: !!article.content
+      });
+
+      // レスポンスの準備
+      let response = {
+        success: true,
+        title: article.title,
+        content: article.content,
+        keyword: keyword,
+        productId: productId
+      };
+
+      // autoPostがtrueの場合、WordPressに投稿
+      if (autoPost) {
+        console.log('📤 Auto-posting to WordPress...');
+        try {
+          const postResult = await blogTool.postToWordPress(
+            article.title,
+            article.content,
+            {
+              category: productData.category || 'レビュー',
+              tags: article.tags || [keyword],
+              status: 'publish'
+            }
+          );
+          
+          if (postResult.success) {
+            response.postId = postResult.postId;
+            response.postUrl = postResult.url;
+            response.postSuccess = true;
+            response.message = 'Article generated and posted successfully';
+            console.log('✅ WordPress post success:', postResult);
+          } else {
+            response.postSuccess = false;
+            response.postError = postResult.error;
+            response.message = 'Article generated but posting failed';
+            console.log('❌ WordPress post failed:', postResult);
+          }
+        } catch (postError) {
+          console.error('WordPress posting error:', postError);
+          response.postSuccess = false;
+          response.postError = postError.message;
+          response.message = 'Article generated but posting error';
+        }
+      } else {
+        response.message = 'Article generated successfully (not posted)';
       }
-      
-      return res.status(200).json(response);
+
+      console.log('=== generateProductReview SUCCESS ===');
+      res.status(200).json(response);
       
     } catch (error) {
-      console.error('Error:', error);
-      return res.status(500).json({
-        success: false,
-        error: error.message
+      console.error('=== generateProductReview ERROR ===');
+      console.error('Error details:', error);
+      
+      res.status(500).json({ 
+        success: false, 
+        error: error.message || 'Internal server error'
       });
     }
   });
