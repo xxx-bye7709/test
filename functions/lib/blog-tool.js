@@ -238,9 +238,7 @@ class BlogAutomationTool {
     tags: ['レビュー'],
     excerpt: 'Product review'
   };
-}
       
-      // フォールバック
       return {
         title: 'Product Review',
         content: '<p>レビュー記事の生成中にエラーが発生しました。</p>',
@@ -250,7 +248,6 @@ class BlogAutomationTool {
         tags: ['review'],
         excerpt: 'Product review'
       };
-    }
   }
 
   /**
