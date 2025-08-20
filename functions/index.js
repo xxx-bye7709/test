@@ -2710,6 +2710,11 @@ exports.generatePost = functions
       res.status(204).send('');
       return;
     }
+// POSTメソッドのみ許可
+    if (req.method !== 'POST') {
+      res.status(405).send('Method Not Allowed');
+      return;
+    }
 
     try {
       console.log('generatePost called:', req.body);
