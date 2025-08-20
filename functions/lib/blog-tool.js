@@ -215,7 +215,30 @@ class BlogAutomationTool {
       };
       
     } catch (error) {
-      console.error('Error generating product review article:', error);
+  console.error('Error generating product review article:', error);
+  
+  // エラー時でも基本的な記事を生成
+  return {
+    title: reviewData?.title || options?.title || 'Product Review',
+    content: `
+      <h2>商品レビュー</h2>
+      <p>${reviewData?.title || '商品'}のレビューです。</p>
+      <h3>商品情報</h3>
+      <ul>
+        <li>商品名: ${reviewData?.title || '不明'}</li>
+        <li>価格: ${reviewData?.price || '価格未定'}</li>
+        <li>カテゴリ: ${reviewData?.category || '未分類'}</li>
+      </ul>
+      <h3>特徴</h3>
+      <p>${reviewData?.description || '詳細情報は準備中です。'}</p>
+    `,
+    focusKeyword: options?.keyword || 'review',
+    metaDescription: `${reviewData?.title || '商品'}のレビュー`,
+    category: reviewData?.category || 'review',
+    tags: ['レビュー'],
+    excerpt: 'Product review'
+  };
+}
       
       // フォールバック
       return {
@@ -293,7 +316,7 @@ class BlogAutomationTool {
    * キーワード密度を最適化
    */
   optimizeKeywordDensity(content, keyword) {
-    const currentCount = (content.match(new RegExp(keyword, 'gi')) || []).length;
+    let currentCount = (content.match(new RegExp(keyword, 'gi')) || []).length;
     console.log(`📊 現在のキーワード出現回数: ${currentCount}回`);
     
     if (currentCount < 5) {
@@ -735,7 +758,15 @@ createWordPressXML(article) {
       status: 'publish'
     };
   }
+escapeXML(str) {
+    if (!str) return '';
+    return str.toString()
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;');
+  }
 }
 
 module.exports = BlogAutomationTool;
-
