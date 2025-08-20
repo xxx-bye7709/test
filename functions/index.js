@@ -1747,22 +1747,24 @@ exports.generateProductReview = functions
       });
       
       let response = {
-        success: true,
-        title: article.title,
-        product: {
-          name: reviewData.title,
-          price: reviewData.price,
-          rating: reviewData.rating
-        }
-      };
+  success: true,
+  title: article.title || 'Product Review',
+  product: {
+    name: reviewData.title || 'Product',
+    price: reviewData.price || 'Price',
+    rating: reviewData.rating || 0
+  }
+};
       
       if (autoPost !== false) {
         console.log('Posting to WordPress...');
         try {
           const postResult = await blogTool.postToWordPress(article);
+          // postResultが成功した場合
           if (postResult && postResult.success) {
             response.postId = postResult.postId;
             response.url = postResult.url;
+            response.message = '✅ WordPress投稿完了';
           }
         } catch (e) {
           console.error('WP error:', e);
