@@ -1711,16 +1711,15 @@ exports.searchProducts = functions
  * 商品レビュー記事生成
  */
 exports.generateProductReview = functions
+  .region('asia-northeast1')
   .runWith({
     timeoutSeconds: 540,
     memory: '2GB'
   })
   .https.onRequest(async (req, res) => {
     console.log('=== generateProductReview START ===');
-    console.log('Request method:', req.method);
-    console.log('Request body:', JSON.stringify(req.body));
     
-    // CORS設定
+    // CORS
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
     res.set('Access-Control-Allow-Headers', 'Content-Type');
@@ -1730,48 +1729,23 @@ exports.generateProductReview = functions
     }
     
     try {
-      const performanceSystem = new PerformanceSystem();
-      performanceSystem.startTimer('total');
+      // 必要なモジュールを直接require
+      const DMMApi = require('./lib/dmm-api');
+      const BlogAutomationTool = require('./lib/blog-tool');
       
-      // パラメータ取得（autoPostのデフォルトをtrueに）
-      const { 
-        productId = 'test-001', 
-        keyword = 'レビュー', 
-        autoPost = true,  // デフォルトをtrueに変更
-        productData 
-      } = req.body;
+      const { productId, keyword, autoPost, productData } = req.body;
       
-      console.log('Parameters:', { productId, keyword, autoPost, hasProductData: !!productData });
+      console.log('Request params:', { productId, keyword, autoPost });
       
-      // DMMApiインスタンス作成
       const dmmApi = new DMMApi();
-      
-      // 商品データ取得または使用
-      let product = productData;
-      if (!product) {
-        console.log('Fetching product data...');
-        product = await dmmApi.getProductDetails(productId);
-      }
-      
-      // レビューデータ準備
-      console.log('Preparing review data...');
+      let product = productData || await dmmApi.getProductDetails(productId || 'test-001');
       const reviewData = dmmApi.prepareReviewData(product);
       
-      // BlogToolで記事生成
-      console.log('Generating article...');
       const blogTool = new BlogAutomationTool();
       const article = await blogTool.generateProductReviewArticle(reviewData, {
-        keyword: keyword || reviewData.title,
-        title: `${reviewData.title}の詳細レビュー【${new Date().getFullYear()}年最新】`
+        keyword: keyword || 'レビュー'
       });
       
-      console.log('Article generated:', {
-        title: article.title,
-        contentLength: article.content?.length,
-        hasContent: !!article.content
-      });
-      
-      // レスポンスオブジェクト初期化
       let response = {
         success: true,
         title: article.title,
@@ -1782,44 +1756,26 @@ exports.generateProductReview = functions
         }
       };
       
-      // WordPress投稿処理（autoPostが明示的にfalseでない限り実行）
       if (autoPost !== false) {
-        console.log('*** Starting WordPress post process ***');
+        console.log('Posting to WordPress...');
         try {
           const postResult = await blogTool.postToWordPress(article);
-          console.log('WordPress post result:', postResult);
-          
           if (postResult && postResult.success) {
             response.postId = postResult.postId;
             response.url = postResult.url;
-            response.message = 'WordPress投稿完了';
-            console.log('✅ WordPress post SUCCESS:', postResult.postId);
-          } else {
-            response.message = 'WordPress投稿失敗';
-            response.error = postResult?.error || 'Unknown error';
-            console.error('❌ WordPress post FAILED:', postResult);
           }
-        } catch (wpError) {
-          console.error('❌ WordPress post ERROR:', wpError);
-          response.message = 'WordPress投稿エラー';
-          response.error = wpError.message;
+        } catch (e) {
+          console.error('WP error:', e);
         }
-      } else {
-        console.log('⚠️ autoPost is false, skipping WordPress post');
-        response.message = '記事生成のみ（投稿なし）';
       }
-      
-      performanceSystem.endTimer('total');
-      console.log('Total execution time:', performanceSystem.getMetrics().total.duration, 'ms');
-      console.log('=== generateProductReview END ===');
       
       return res.status(200).json(response);
       
     } catch (error) {
-      console.error('❌ generateProductReview ERROR:', error);
+      console.error('Error:', error);
       return res.status(500).json({
         success: false,
-        error: error.message || 'Internal server error'
+        error: error.message
       });
     }
   });
@@ -2908,4 +2864,5 @@ function generateArticleContent(products, articleType, keyword) {
   return content;
 }
 }
+
 
