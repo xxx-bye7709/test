@@ -215,39 +215,30 @@ class BlogAutomationTool {
       };
       
     } catch (error) {
-  console.error('Error generating product review article:', error);
-  
-  // エラー時でも基本的な記事を生成
-  return {
-    title: reviewData?.title || options?.title || 'Product Review',
-    content: `
-      <h2>商品レビュー</h2>
-      <p>${reviewData?.title || '商品'}のレビューです。</p>
-      <h3>商品情報</h3>
-      <ul>
-        <li>商品名: ${reviewData?.title || '不明'}</li>
-        <li>価格: ${reviewData?.price || '価格未定'}</li>
-        <li>カテゴリ: ${reviewData?.category || '未分類'}</li>
-      </ul>
-      <h3>特徴</h3>
-      <p>${reviewData?.description || '詳細情報は準備中です。'}</p>
-    `,
-    focusKeyword: options?.keyword || 'review',
-    metaDescription: `${reviewData?.title || '商品'}のレビュー`,
-    category: reviewData?.category || 'review',
-    tags: ['レビュー'],
-    excerpt: 'Product review'
-  };
+      console.error('Error generating product review article:', error);
       
+      // エラー時でも基本的な記事を生成
       return {
-        title: 'Product Review',
-        content: '<p>レビュー記事の生成中にエラーが発生しました。</p>',
-        focusKeyword: 'review',
-        metaDescription: 'Product review article',
-        category: 'review',
-        tags: ['review'],
+        title: reviewData?.title || options?.title || 'Product Review',
+        content: `
+          <h2>商品レビュー</h2>
+          <p>${reviewData?.title || '商品'}のレビューです。</p>
+          <h3>商品情報</h3>
+          <ul>
+            <li>商品名: ${reviewData?.title || '不明'}</li>
+            <li>価格: ${reviewData?.price || '価格未定'}</li>
+            <li>カテゴリ: ${reviewData?.category || '未分類'}</li>
+          </ul>
+          <h3>特徴</h3>
+          <p>${reviewData?.description || '詳細情報は準備中です。'}</p>
+        `,
+        focusKeyword: options?.keyword || 'review',
+        metaDescription: `${reviewData?.title || '商品'}のレビュー`,
+        category: reviewData?.category || 'review',
+        tags: ['レビュー'],
         excerpt: 'Product review'
       };
+    }
   }
 
   /**
@@ -313,37 +304,37 @@ class BlogAutomationTool {
    * キーワード密度を最適化
    */
   optimizeKeywordDensity(content, keyword) {
-  // constをletに変更（これが重要）
-  let currentCount = (content.match(new RegExp(keyword, 'gi')) || []).length;
-  console.log(`📊 現在のキーワード出現回数: ${currentCount}回`);
-  
-  if (currentCount < 5) {
-    const needed = 5 - currentCount;
-    console.log(`⚠️ キーワードが不足しています。${needed}回追加します...`);
+    // constをletに変更（これが重要）
+    let currentCount = (content.match(new RegExp(keyword, 'gi')) || []).length;
+    console.log(`📊 現在のキーワード出現回数: ${currentCount}回`);
     
-    const sections = content.split(/<\/h[23]>/);
-    
-    for (let i = 0; i < sections.length && currentCount < 5; i++) {
-      if (!sections[i].includes(keyword)) {
-        const paragraphs = sections[i].split('</p>');
-        if (paragraphs.length > 1) {
-          const midIndex = Math.floor(paragraphs.length / 2);
-          paragraphs[midIndex] = paragraphs[midIndex].replace(
-            /<p>([^<]+)/,
-            `<p>$1 ${keyword}の観点から見ると、`
-          );
-          sections[i] = paragraphs.join('</p>');
-          currentCount++;  // ここでcurrentCountを増やしている
+    if (currentCount < 5) {
+      const needed = 5 - currentCount;
+      console.log(`⚠️ キーワードが不足しています。${needed}回追加します...`);
+      
+      const sections = content.split(/<\/h[23]>/);
+      
+      for (let i = 0; i < sections.length && currentCount < 5; i++) {
+        if (!sections[i].includes(keyword)) {
+          const paragraphs = sections[i].split('</p>');
+          if (paragraphs.length > 1) {
+            const midIndex = Math.floor(paragraphs.length / 2);
+            paragraphs[midIndex] = paragraphs[midIndex].replace(
+              /<p>([^<]+)/,
+              `<p>$1 ${keyword}の観点から見ると、`
+            );
+            sections[i] = paragraphs.join('</p>');
+            currentCount++;  // ここでcurrentCountを増やしている
+          }
         }
       }
+      
+      content = sections.join('</h3>').replace(/<\/h3><\/h3>/g, '</h3>');
+      console.log('✅ キーワード密度を最適化しました');
     }
     
-    content = sections.join('</h3>').replace(/<\/h3><\/h3>/g, '</h3>');
-    console.log('✅ キーワード密度を最適化しました');
+    return content;
   }
-  
-  return content;
-}
 
   // 既存のメソッドをそのまま維持
   async generateArticle(category = 'entertainment', options = {}) {
@@ -382,74 +373,74 @@ class BlogAutomationTool {
   }
 
   async postToWordPress(article) {
-  try {
-    console.log('📤 WordPressに投稿中...');
-    console.log('WordPress URL:', this.wpUrl);
-    
-    if (!this.wpUrl || !this.wpUsername || !this.wpPassword) {
-      console.warn('WordPress credentials not configured');
-      return { success: false, message: 'WordPress not configured' };
-    }
-    
-    // XML-RPCを使用
-    const xmlRequest = this.createWordPressXML(article);
-    
-    const response = await axios.post(
-      `${this.wpUrl}/xmlrpc.php`,
-      xmlRequest,
-      {
-        headers: {
-          'Content-Type': 'text/xml',
-          'Authorization': this.authHeader
-        }
-      }
-    );
-
-    console.log('WordPress Response Status:', response.status);
-
-    let postId = null;
-    
-    if (typeof response.data === 'string') {
-      const stringMatch = response.data.match(/<string>(\d+)<\/string>/);
-      if (stringMatch) {
-        postId = stringMatch[1];
-        console.log('✅ Post ID:', postId);
+    try {
+      console.log('📤 WordPressに投稿中...');
+      console.log('WordPress URL:', this.wpUrl);
+      
+      if (!this.wpUrl || !this.wpUsername || !this.wpPassword) {
+        console.warn('WordPress credentials not configured');
+        return { success: false, message: 'WordPress not configured' };
       }
       
-      const faultMatch = response.data.match(/<fault>/);
-      if (faultMatch) {
-        const errorMatch = response.data.match(/<name>faultString<\/name>\s*<value><string>(.*?)<\/string>/);
-        const errorMessage = errorMatch ? errorMatch[1] : 'Unknown WordPress error';
-        throw new Error(errorMessage);
+      // XML-RPCを使用
+      const xmlRequest = this.createWordPressXML(article);
+      
+      const response = await axios.post(
+        `${this.wpUrl}/xmlrpc.php`,
+        xmlRequest,
+        {
+          headers: {
+            'Content-Type': 'text/xml',
+            'Authorization': this.authHeader
+          }
+        }
+      );
+
+      console.log('WordPress Response Status:', response.status);
+
+      let postId = null;
+      
+      if (typeof response.data === 'string') {
+        const stringMatch = response.data.match(/<string>(\d+)<\/string>/);
+        if (stringMatch) {
+          postId = stringMatch[1];
+          console.log('✅ Post ID:', postId);
+        }
+        
+        const faultMatch = response.data.match(/<fault>/);
+        if (faultMatch) {
+          const errorMatch = response.data.match(/<name>faultString<\/name>\s*<value><string>(.*?)<\/string>/);
+          const errorMessage = errorMatch ? errorMatch[1] : 'Unknown WordPress error';
+          throw new Error(errorMessage);
+        }
       }
-    }
 
-    if (postId && parseInt(postId) > 0) {
-      console.log(`✅ 投稿成功！ Post ID: ${postId}`);
-      return {
-        success: true,
-        postId,
-        url: `${this.wpUrl}/?p=${postId}`
-      };
-    } else {
-      throw new Error('有効な投稿IDを取得できませんでした');
+      if (postId && parseInt(postId) > 0) {
+        console.log(`✅ 投稿成功！ Post ID: ${postId}`);
+        return {
+          success: true,
+          postId,
+          url: `${this.wpUrl}/?p=${postId}`
+        };
+      } else {
+        throw new Error('有効な投稿IDを取得できませんでした');
+      }
+      
+    } catch (error) {
+      console.error('WordPress投稿エラー:', error.message);
+      return { success: false, error: error.message };
     }
-    
-  } catch (error) {
-    console.error('WordPress投稿エラー:', error.message);
-    return { success: false, error: error.message };
   }
-}
 
-// XML作成関数も必要
-createWordPressXML(article) {
-  const { title = 'No Title', content = '', tags = [], category = 'general' } = article;
-  
-  const tagsXML = tags.map(tag => 
-    `<value><string>${this.escapeXML(tag)}</string></value>`
-  ).join('');
+  // XML作成関数も必要
+  createWordPressXML(article) {
+    const { title = 'No Title', content = '', tags = [], category = 'general' } = article;
+    
+    const tagsXML = tags.map(tag => 
+      `<value><string>${this.escapeXML(tag)}</string></value>`
+    ).join('');
 
-  return `<?xml version="1.0"?>
+    return `<?xml version="1.0"?>
 <methodCall>
   <methodName>wp.newPost</methodName>
   <params>
@@ -495,7 +486,7 @@ createWordPressXML(article) {
     </param>
   </params>
 </methodCall>`;
-}
+  }
 
   // ヘルパーメソッド群
   generateSEOMetaDescription(content, keyword, title) {
@@ -756,7 +747,8 @@ createWordPressXML(article) {
       status: 'publish'
     };
   }
-escapeXML(str) {
+
+  escapeXML(str) {
     if (!str) return '';
     return str.toString()
       .replace(/&/g, '&amp;')
