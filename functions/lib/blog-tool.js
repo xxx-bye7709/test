@@ -316,36 +316,37 @@ class BlogAutomationTool {
    * キーワード密度を最適化
    */
   optimizeKeywordDensity(content, keyword) {
-    let currentCount = (content.match(new RegExp(keyword, 'gi')) || []).length;
-    console.log(`📊 現在のキーワード出現回数: ${currentCount}回`);
+  // constをletに変更（これが重要）
+  let currentCount = (content.match(new RegExp(keyword, 'gi')) || []).length;
+  console.log(`📊 現在のキーワード出現回数: ${currentCount}回`);
+  
+  if (currentCount < 5) {
+    const needed = 5 - currentCount;
+    console.log(`⚠️ キーワードが不足しています。${needed}回追加します...`);
     
-    if (currentCount < 5) {
-      const needed = 5 - currentCount;
-      console.log(`⚠️ キーワードが不足しています。${needed}回追加します...`);
-      
-      const sections = content.split(/<\/h[23]>/);
-      
-      for (let i = 0; i < sections.length && currentCount < 5; i++) {
-        if (!sections[i].includes(keyword)) {
-          const paragraphs = sections[i].split('</p>');
-          if (paragraphs.length > 1) {
-            const midIndex = Math.floor(paragraphs.length / 2);
-            paragraphs[midIndex] = paragraphs[midIndex].replace(
-              /<p>([^<]+)/,
-              `<p>$1 ${keyword}の観点から見ると、`
-            );
-            sections[i] = paragraphs.join('</p>');
-            currentCount++;
-          }
+    const sections = content.split(/<\/h[23]>/);
+    
+    for (let i = 0; i < sections.length && currentCount < 5; i++) {
+      if (!sections[i].includes(keyword)) {
+        const paragraphs = sections[i].split('</p>');
+        if (paragraphs.length > 1) {
+          const midIndex = Math.floor(paragraphs.length / 2);
+          paragraphs[midIndex] = paragraphs[midIndex].replace(
+            /<p>([^<]+)/,
+            `<p>$1 ${keyword}の観点から見ると、`
+          );
+          sections[i] = paragraphs.join('</p>');
+          currentCount++;  // ここでcurrentCountを増やしている
         }
       }
-      
-      content = sections.join('</h3>').replace(/<\/h3><\/h3>/g, '</h3>');
-      console.log('✅ キーワード密度を最適化しました');
     }
     
-    return content;
+    content = sections.join('</h3>').replace(/<\/h3><\/h3>/g, '</h3>');
+    console.log('✅ キーワード密度を最適化しました');
   }
+  
+  return content;
+}
 
   // 既存のメソッドをそのまま維持
   async generateArticle(category = 'entertainment', options = {}) {
