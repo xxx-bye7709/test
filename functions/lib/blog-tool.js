@@ -21,6 +21,8 @@ class BlogTool {
       apiKey: this.openaiApiKey
     });
 
+    // この関数は不要になったのでコメントアウト
+     /*
     // XML-RPCクライアントの設定（修正版）
     if (this.wordpressUrl) {
       const url = new URL(this.wordpressUrl);
@@ -36,6 +38,7 @@ class BlogTool {
         encoding: 'utf8'  // エンコーディングを明示
       });
     }
+    */
 
     this.blogId = 1;
 
@@ -223,6 +226,8 @@ class BlogTool {
     return content;
   }
 
+  // この関数は不要になったのでコメントアウト
+/*
   // XML-RPC呼び出し（UTF-8対応）
   async callXmlRpc(methodName, params) {
     return new Promise((resolve, reject) => {
@@ -246,6 +251,7 @@ class BlogTool {
       });
     });
   }
+  */
 
   // postToWordPress関数を直接XML-RPC版に置き換え
 async postToWordPress(article) {
