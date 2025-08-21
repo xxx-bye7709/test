@@ -21,7 +21,7 @@ class BlogTool {
       apiKey: this.openaiApiKey
     });
 
-    // XML-RPCクライアントの設定（UTF-8エンコーディングを明示）
+    // XML-RPCクライアントの設定（修正版）
     if (this.wordpressUrl) {
       const url = new URL(this.wordpressUrl);
       this.client = xmlrpc.createClient({
@@ -31,9 +31,9 @@ class BlogTool {
         secure: url.protocol === 'https:',
         headers: {
           'User-Agent': 'BlogTool/1.0',
-          'Content-Type': 'text/xml; charset=UTF-8',
-          'Accept-Charset': 'UTF-8'
-        }
+          'Content-Type': 'text/xml'  // charset指定を削除
+        },
+        encoding: 'utf8'  // エンコーディングを明示
       });
     }
 
@@ -252,70 +252,37 @@ class BlogTool {
   try {
     console.log('📤 Posting to WordPress via XML-RPC...');
     
-    // articleオブジェクトから情報を取得
-    let title, content, category, tags, status;
+    // シンプルに必要な情報だけ取得
+    const title = article.title || 'タイトルなし';
+    const content = article.content || '<p>コンテンツなし</p>';
+    const category = article.category || 'uncategorized';
+    const tags = article.tags || [];
     
-    if (typeof article === 'object' && article !== null) {
-      title = article.title || 'タイトルなし';
-      content = article.content || '<p>コンテンツなし</p>';
-      category = article.category || 'uncategorized';
-      tags = article.tags || [];
-      status = article.status || 'publish';
-    } else {
-      // 互換性のため（古い呼び出し方法）
-      title = arguments[0] || 'タイトルなし';
-      content = arguments[1] || '<p>コンテンツなし</p>';
-      const options = arguments[2] || {};
-      category = options.category || 'uncategorized';
-      tags = options.tags || [];
-      status = options.status || 'publish';
-    }
+    console.log('Posting:', { title, contentLength: content.length });
     
-    console.log('Post details:', {
-      title: title,
-      contentLength: content?.length,
-      category: category,
-      tagsCount: tags?.length
-    });
-    
-    // タイトルとコンテンツを処理（変数名を変更して重複を回避）
-    const processedTitle = this.optimizeTitle(title, category);
-    const processedContent = this.sanitizeContent(content);
-    const processedTags = this.optimizeTags(tags, category);
-    
-    // カテゴリー名のマッピング
-    const categoryMap = {
-      entertainment: 'エンタメ',
-      anime: 'アニメ',
-      game: 'ゲーム',
-      movie: '映画',
-      music: '音楽',
-      tech: 'テクノロジー',
-      beauty: '美容',
-      food: 'グルメ',
-      'テスト': 'テスト',
-      'レビュー': 'レビュー'
-    };
-    
-    const wpCategory = categoryMap[category] || category;
-    
-    // XML-RPC用のデータ構造
+    // XML-RPC用のシンプルなデータ構造
     const postData = {
       post_type: 'post',
-      post_status: status,
-      post_title: String(processedTitle),
-      post_content: String(processedContent),
+      post_status: 'publish',
+      post_title: title,  // そのまま送信
+      post_content: content,  // そのまま送信
       post_author: 1,
       comment_status: 'open',
-      ping_status: 'open',
-      terms_names: {
-        category: [wpCategory],
-        post_tag: processedTags.slice(0, 10)
-      }
+      ping_status: 'open'
     };
     
-    console.log('Sending XML-RPC request...');
-    console.log('Title:', postData.post_title);
+    // カテゴリーとタグを追加（オプション）
+    if (category || tags.length > 0) {
+      postData.terms_names = {};
+      if (category) {
+        postData.terms_names.category = [category];
+      }
+      if (tags.length > 0) {
+        postData.terms_names.post_tag = tags.slice(0, 5);  // 5個まで
+      }
+    }
+    
+    console.log('Calling XML-RPC...');
     
     const result = await this.callXmlRpc('wp.newPost', [
       this.blogId,
@@ -334,10 +301,10 @@ class BlogTool {
     };
     
   } catch (error) {
-    console.error('❌ Error posting to WordPress:', error);
+    console.error('❌ WordPress Error:', error.message);
     return {
       success: false,
-      error: error.message || 'Unknown error',
+      error: error.message,
       message: 'Failed to create post'
     };
   }
