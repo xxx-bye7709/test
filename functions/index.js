@@ -1904,6 +1904,7 @@ exports.testMinimalPost = functions
     }
   });
 
+// 直接XML-RPCを送信するテスト関数
 exports.testDirectXmlRpc = functions
   .region('asia-northeast1')
   .https.onRequest(async (req, res) => {
