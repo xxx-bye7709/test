@@ -1718,17 +1718,11 @@ exports.generateProductReview = functions
   })
   .https.onRequest(async (req, res) => {
     console.log('=== generateProductReview START ===');
-    console.log('Request method:', req.method);
-    console.log('Content-Type:', req.headers['content-type']);
-
-    // node-fetchをrequire（重要！）
-    const fetch = require('node-fetch');
     
     // CORS設定
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    res.set('Content-Type', 'application/json; charset=utf-8'); // UTF-8を明示
+    res.set('Access-Control-Allow-Headers', 'Content-Type');
     
     // OPTIONSリクエストへの対応
     if (req.method === 'OPTIONS') {
@@ -1736,124 +1730,65 @@ exports.generateProductReview = functions
       return;
     }
     
-    // POSTメソッドのみ許可
-    if (req.method !== 'POST') {
-      res.status(405).json({ 
-        success: false, 
-        error: 'Method Not Allowed' 
-      });
-      return;
-    }
-
     try {
-      // リクエストボディの取得（エンコーディング対応）
-      let requestBody;
-      if (typeof req.body === 'string') {
-        // 文字列の場合はJSONパース
-        try {
-          requestBody = JSON.parse(req.body);
-        } catch (parseError) {
-          console.error('JSON parse error:', parseError);
-          // UTF-8として再度パース試行
-          const decoder = new TextDecoder('utf-8');
-          const encoder = new TextEncoder();
-          const bytes = encoder.encode(req.body);
-          const decoded = decoder.decode(bytes);
-          requestBody = JSON.parse(decoded);
-        }
-      } else {
-        requestBody = req.body;
-      }
-      
-      console.log('Request body:', JSON.stringify(requestBody));
-      
-      // BlogToolのインスタンスを作成
       const BlogTool = require('./lib/blog-tool');
       const blogTool = new BlogTool();
       
-      // パラメータの取得
-      const { 
-        productId = 'test-001', 
-        keyword = 'レビュー', 
-        autoPost = true,
-        productData = {
-          title: 'テスト商品',
-          description: 'テスト商品の説明',
-          price: '1,000円',
-          category: 'テスト'
-        }
-      } = requestBody;
-
-      console.log('Parameters:', {
-        productId,
-        keyword,
-        autoPost,
-        hasProductData: !!productData
-      });
-
-      // 記事の生成（productDataをreviewDataとして渡す）
-      console.log('🔍 Generating article...');
+      // リクエストボディまたはデフォルト値
+      const body = req.body || {};
+      const productData = body.productData || {
+        title: 'デフォルトテスト商品',
+        description: 'テスト投稿',
+        price: '1000円',
+        category: 'テスト'
+      };
+      
+      const keyword = body.keyword || 'テスト';
+      const autoPost = body.autoPost !== false;
+      
+      console.log('Product:', productData.title);
+      console.log('Keyword:', keyword);
+      console.log('AutoPost:', autoPost);
+      
+      // 記事生成
       const article = await blogTool.generateProductReviewArticle(
-        productData,  // reviewDataとして扱われる
-        {
-          keyword: keyword,
-          title: `${productData.title}のレビュー`
-        }
+        productData,
+        { keyword: keyword }
       );
-
-      console.log('Article generated:', {
-        title: article.title,
-        contentLength: article.content?.length,
-        hasContent: !!article.content
-      });
-
-      // レスポンスの準備
+      
+      console.log('Article generated:', article.title);
+      
       let response = {
         success: true,
         title: article.title,
         keyword: keyword,
-        productId: productId
+        productId: body.productId || 'test'
       };
-
-      // autoPostがtrueの場合、WordPressに投稿
+      
+      // WordPress投稿
       if (autoPost) {
-        console.log('📤 Auto-posting to WordPress...');
-        try {
-          // articleオブジェクトをそのまま渡す（postToWordPressが処理）
-          const postResult = await blogTool.postToWordPress(article);
-          
-          if (postResult.success) {
-            response.postId = postResult.postId;
-            response.postUrl = postResult.url;
-            response.postSuccess = true;
-            response.message = 'Article generated and posted successfully';
-            console.log('✅ WordPress post success:', postResult);
-          } else {
-            response.postSuccess = false;
-            response.postError = postResult.error;
-            response.message = 'Article generated but posting failed';
-            console.log('❌ WordPress post failed:', postResult);
-          }
-        } catch (postError) {
-          console.error('WordPress posting error:', postError);
+        console.log('Posting to WordPress...');
+        const postResult = await blogTool.postToWordPress(article);
+        
+        if (postResult.success) {
+          response.postId = postResult.postId;
+          response.postUrl = postResult.url;
+          response.postSuccess = true;
+          response.message = 'Posted successfully';
+        } else {
           response.postSuccess = false;
-          response.postError = postError.message;
-          response.message = 'Article generated but posting error';
+          response.postError = postResult.error;
         }
-      } else {
-        response.message = 'Article generated successfully (not posted)';
       }
-
-      console.log('=== generateProductReview SUCCESS ===');
-      res.status(200).json(response);
+      
+      console.log('=== generateProductReview END ===');
+      res.json(response);
       
     } catch (error) {
-      console.error('=== generateProductReview ERROR ===');
-      console.error('Error details:', error);
-      
+      console.error('Error:', error);
       res.status(500).json({ 
         success: false, 
-        error: error.message || 'Internal server error'
+        error: error.message 
       });
     }
   });
