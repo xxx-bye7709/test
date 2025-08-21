@@ -1720,6 +1720,9 @@ exports.generateProductReview = functions
     console.log('=== generateProductReview START ===');
     console.log('Request method:', req.method);
     console.log('Content-Type:', req.headers['content-type']);
+
+    // node-fetchをrequire（重要！）
+    const fetch = require('node-fetch');
     
     // CORS設定
     res.set('Access-Control-Allow-Origin', '*');
