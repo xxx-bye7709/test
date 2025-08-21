@@ -247,61 +247,120 @@ class BlogTool {
     });
   }
 
-  // WordPressに投稿（改良版）
-  async postToWordPress(article) {
+  // postToWordPress関数を直接XML-RPC版に置き換え
+async postToWordPress(article) {
   try {
-    console.log('📤 Posting to WordPress via XML-RPC...');
+    console.log('📤 Posting to WordPress via direct XML-RPC...');
     
-    // シンプルに必要な情報だけ取得
+    const fetch = require('node-fetch');
+    
+    // 記事データを取得
     const title = article.title || 'タイトルなし';
     const content = article.content || '<p>コンテンツなし</p>';
     const category = article.category || 'uncategorized';
     const tags = article.tags || [];
+    const status = article.status || 'publish';
     
-    console.log('Posting:', { title, contentLength: content.length });
+    console.log('Post details:', {
+      title: title,
+      contentLength: content?.length,
+      category: category
+    });
     
-    // XML-RPC用のシンプルなデータ構造
-    const postData = {
-      post_type: 'post',
-      post_status: 'publish',
-      post_title: title,  // そのまま送信
-      post_content: content,  // そのまま送信
-      post_author: 1,
-      comment_status: 'open',
-      ping_status: 'open'
+    // XMLをエスケープ
+    const escapeXml = (str) => {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
     };
     
-    // カテゴリーとタグを追加（オプション）
-    if (category || tags.length > 0) {
-      postData.terms_names = {};
-      if (category) {
-        postData.terms_names.category = [category];
+    // タイトルとコンテンツを処理
+    const processedTitle = this.optimizeTitle(title, category);
+    const cleanContent = this.sanitizeContent(content);
+    
+    // XML-RPCリクエストを構築
+    const xmlRequest = `<?xml version="1.0" encoding="UTF-8"?>
+<methodCall>
+  <methodName>wp.newPost</methodName>
+  <params>
+    <param><value><int>1</int></value></param>
+    <param><value><string>${escapeXml(this.wordpressUsername)}</string></value></param>
+    <param><value><string>${escapeXml(this.wordpressPassword)}</string></value></param>
+    <param>
+      <value>
+        <struct>
+          <member>
+            <name>post_type</name>
+            <value><string>post</string></value>
+          </member>
+          <member>
+            <name>post_status</name>
+            <value><string>${status}</string></value>
+          </member>
+          <member>
+            <name>post_title</name>
+            <value><string>${escapeXml(processedTitle)}</string></value>
+          </member>
+          <member>
+            <name>post_content</name>
+            <value><string>${escapeXml(cleanContent)}</string></value>
+          </member>
+          <member>
+            <name>post_author</name>
+            <value><int>1</int></value>
+          </member>
+          <member>
+            <name>comment_status</name>
+            <value><string>open</string></value>
+          </member>
+        </struct>
+      </value>
+    </param>
+  </params>
+</methodCall>`;
+
+    console.log('Sending request to:', this.wordpressUrl + '/xmlrpc.php');
+    
+    const response = await fetch(this.wordpressUrl + '/xmlrpc.php', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/xml; charset=UTF-8',
+        'Accept': 'text/xml'
+      },
+      body: xmlRequest
+    });
+    
+    const responseText = await response.text();
+    console.log('WordPress response:', responseText.substring(0, 200));
+    
+    // postIdを抽出
+    const postIdMatch = responseText.match(/<string>(\d+)<\/string>/);
+    
+    if (postIdMatch) {
+      const postId = postIdMatch[1];
+      console.log('✅ WordPress post created with ID:', postId);
+      
+      return {
+        success: true,
+        postId: postId,
+        url: `${this.wordpressUrl}/?p=${postId}`,
+        message: 'Post created successfully'
+      };
+    } else {
+      // エラーをチェック
+      const faultMatch = responseText.match(/<faultString>(.*?)<\/faultString>/s);
+      if (faultMatch) {
+        throw new Error('XML-RPC Fault: ' + faultMatch[1]);
       }
-      if (tags.length > 0) {
-        postData.terms_names.post_tag = tags.slice(0, 5);  // 5個まで
-      }
+      throw new Error('Unexpected response from WordPress');
     }
     
-    console.log('Calling XML-RPC...');
-    
-    const result = await this.callXmlRpc('wp.newPost', [
-      this.blogId,
-      this.wordpressUsername,
-      this.wordpressPassword,
-      postData
-    ]);
-    
-    console.log('✅ WordPress post created with ID:', result);
-    
-    return {
-      success: true,
-      postId: result,
-      url: `${this.wordpressUrl}/?p=${result}`,
-      message: 'Post created successfully'
-    };
-    
   } catch (error) {
-    console.error('❌ WordPress Error:', error.message);
+    console.error('❌ Error posting to WordPress:', error);
     return {
       success: false,
       error: error.message,
