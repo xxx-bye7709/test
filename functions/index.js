@@ -1904,6 +1904,79 @@ exports.testMinimalPost = functions
     }
   });
 
+exports.testDirectXmlRpc = functions
+  .region('asia-northeast1')
+  .https.onRequest(async (req, res) => {
+    try {
+      const fetch = require('node-fetch');
+      
+      const xmlRequest = `<?xml version="1.0"?>
+<methodCall>
+  <methodName>wp.newPost</methodName>
+  <params>
+    <param><value><int>1</int></value></param>
+    <param><value><string>entamade</string></value></param>
+    <param><value><string>IChL 1yMu 4OUF YpL6 Wz8d oxln</string></value></param>
+    <param>
+      <value>
+        <struct>
+          <member>
+            <name>post_type</name>
+            <value><string>post</string></value>
+          </member>
+          <member>
+            <name>post_status</name>
+            <value><string>draft</string></value>
+          </member>
+          <member>
+            <name>post_title</name>
+            <value><string>Direct XML-RPC Test from Firebase</string></value>
+          </member>
+          <member>
+            <name>post_content</name>
+            <value><string>This is a test post sent directly via XML-RPC.</string></value>
+          </member>
+        </struct>
+      </value>
+    </param>
+  </params>
+</methodCall>`;
+
+      console.log('Sending direct XML-RPC request...');
+      
+      const response = await fetch('https://www.entamade.jp/xmlrpc.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/xml; charset=UTF-8'
+        },
+        body: xmlRequest
+      });
+      
+      const responseText = await response.text();
+      console.log('Response:', responseText);
+      
+      // postIdを抽出
+      const postIdMatch = responseText.match(/<string>(\d+)<\/string>/);
+      
+      if (postIdMatch) {
+        res.json({
+          success: true,
+          postId: postIdMatch[1],
+          message: 'Post created successfully via direct XML-RPC'
+        });
+      } else {
+        res.json({
+          success: false,
+          response: responseText
+        });
+      }
+      
+    } catch (error) {
+      console.error('Error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
 /**
  * DMM API設定デバッグ
  */
