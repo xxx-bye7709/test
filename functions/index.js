@@ -1710,8 +1710,6 @@ exports.searchProducts = functions
 /**
  * 商品レビュー記事生成
  */
-// index.jsのgenerateProductReview関数を以下に置き換えてください
-
 exports.generateProductReview = functions
   .region('asia-northeast1')
   .runWith({
@@ -1720,11 +1718,14 @@ exports.generateProductReview = functions
   })
   .https.onRequest(async (req, res) => {
     console.log('=== generateProductReview START ===');
+    console.log('Request method:', req.method);
+    console.log('Content-Type:', req.headers['content-type']);
     
     // CORS設定
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.set('Content-Type', 'application/json; charset=utf-8'); // UTF-8を明示
     
     // OPTIONSリクエストへの対応
     if (req.method === 'OPTIONS') {
@@ -1742,9 +1743,28 @@ exports.generateProductReview = functions
     }
 
     try {
-      console.log('Request body:', JSON.stringify(req.body));
+      // リクエストボディの取得（エンコーディング対応）
+      let requestBody;
+      if (typeof req.body === 'string') {
+        // 文字列の場合はJSONパース
+        try {
+          requestBody = JSON.parse(req.body);
+        } catch (parseError) {
+          console.error('JSON parse error:', parseError);
+          // UTF-8として再度パース試行
+          const decoder = new TextDecoder('utf-8');
+          const encoder = new TextEncoder();
+          const bytes = encoder.encode(req.body);
+          const decoded = decoder.decode(bytes);
+          requestBody = JSON.parse(decoded);
+        }
+      } else {
+        requestBody = req.body;
+      }
       
-      // BlogToolのインスタンスを作成（BlogAutomationToolではなく）
+      console.log('Request body:', JSON.stringify(requestBody));
+      
+      // BlogToolのインスタンスを作成
       const BlogTool = require('./lib/blog-tool');
       const blogTool = new BlogTool();
       
@@ -1759,7 +1779,7 @@ exports.generateProductReview = functions
           price: '1,000円',
           category: 'テスト'
         }
-      } = req.body;
+      } = requestBody;
 
       console.log('Parameters:', {
         productId,
@@ -1768,11 +1788,14 @@ exports.generateProductReview = functions
         hasProductData: !!productData
       });
 
-      // 記事の生成
+      // 記事の生成（productDataをreviewDataとして渡す）
       console.log('🔍 Generating article...');
       const article = await blogTool.generateProductReviewArticle(
-        productData,
-        keyword
+        productData,  // reviewDataとして扱われる
+        {
+          keyword: keyword,
+          title: `${productData.title}のレビュー`
+        }
       );
 
       console.log('Article generated:', {
@@ -1785,7 +1808,6 @@ exports.generateProductReview = functions
       let response = {
         success: true,
         title: article.title,
-        content: article.content,
         keyword: keyword,
         productId: productId
       };
@@ -1794,15 +1816,8 @@ exports.generateProductReview = functions
       if (autoPost) {
         console.log('📤 Auto-posting to WordPress...');
         try {
-          const postResult = await blogTool.postToWordPress(
-            article.title,
-            article.content,
-            {
-              category: productData.category || 'レビュー',
-              tags: article.tags || [keyword],
-              status: 'publish'
-            }
-          );
+          // articleオブジェクトをそのまま渡す（postToWordPressが処理）
+          const postResult = await blogTool.postToWordPress(article);
           
           if (postResult.success) {
             response.postId = postResult.postId;
