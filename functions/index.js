@@ -1855,6 +1855,33 @@ exports.generateProductReview = functions
     }
   });
 
+// 最小限のテスト関数
+exports.testMinimalPost = functions
+  .region('asia-northeast1')
+  .https.onRequest(async (req, res) => {
+    try {
+      const BlogTool = require('./lib/blog-tool');
+      const blogTool = new BlogTool();
+      
+      // 最小限のデータ（英語のみ）
+      const article = {
+        title: 'Test Post',
+        content: '<p>This is a test post.</p>',
+        category: 'uncategorized',
+        tags: ['test']
+      };
+      
+      console.log('Testing minimal WordPress post...');
+      const result = await blogTool.postToWordPress(article);
+      console.log('Test result:', result);
+      
+      res.json(result);
+    } catch (error) {
+      console.error('Test error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
 /**
  * DMM API設定デバッグ
  */
