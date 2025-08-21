@@ -1860,10 +1860,29 @@ exports.testMinimalPost = functions
   .region('asia-northeast1')
   .https.onRequest(async (req, res) => {
     try {
+      console.log('=== testMinimalPost START ===');
+      
+      // 環境変数を確認
+      console.log('ENV WORDPRESS_URL:', process.env.WORDPRESS_URL);
+      console.log('ENV WORDPRESS_USERNAME:', process.env.WORDPRESS_USERNAME);
+      console.log('ENV WORDPRESS_PASSWORD:', process.env.WORDPRESS_PASSWORD ? 'SET' : 'NOT SET');
+      console.log('ENV WORDPRESS_PASSWORD length:', process.env.WORDPRESS_PASSWORD?.length);
+      
+      // Firebase configを確認
+      const config = functions.config();
+      console.log('CONFIG wordpress.url:', config.wordpress?.url);
+      console.log('CONFIG wordpress.username:', config.wordpress?.username);
+      console.log('CONFIG wordpress.password:', config.wordpress?.password ? 'SET' : 'NOT SET');
+      console.log('CONFIG wordpress.password length:', config.wordpress?.password?.length);
+      
       const BlogTool = require('./lib/blog-tool');
       const blogTool = new BlogTool();
       
-      // 最小限のデータ（英語のみ）
+      // 実際に使用される値を確認
+      console.log('BlogTool URL:', blogTool.wordpressUrl);
+      console.log('BlogTool Username:', blogTool.wordpressUsername);
+      console.log('BlogTool Password:', blogTool.wordpressPassword);
+      
       const article = {
         title: 'Test Post',
         content: '<p>This is a test post.</p>',
@@ -1871,14 +1890,17 @@ exports.testMinimalPost = functions
         tags: ['test']
       };
       
-      console.log('Testing minimal WordPress post...');
+      console.log('Calling postToWordPress...');
       const result = await blogTool.postToWordPress(article);
-      console.log('Test result:', result);
+      console.log('Result:', result);
       
       res.json(result);
     } catch (error) {
-      console.error('Test error:', error);
-      res.status(500).json({ error: error.message });
+      console.error('Error:', error);
+      res.status(500).json({ 
+        error: error.message,
+        stack: error.stack 
+      });
     }
   });
 
