@@ -1782,10 +1782,12 @@ exports.generateProductReview = functions
       }
       
       console.log('=== generateProductReview END ===');
+      res.set('Content-Type', 'application/json; charset=utf-8');  // ← この行を追加
       res.json(response);
       
     } catch (error) {
       console.error('Error:', error);
+        res.set('Content-Type', 'application/json; charset=utf-8');  // ← この行を追加
       res.status(500).json({ 
         success: false, 
         error: error.message 
