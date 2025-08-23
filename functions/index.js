@@ -1723,16 +1723,43 @@ exports.generateProductReview = functions
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.set('Access-Control-Allow-Headers', 'Content-Type');
+    res.set('Content-Type', 'application/json; charset=utf-8');
     
-    // OPTIONSリクエストへの対応
     if (req.method === 'OPTIONS') {
       res.status(204).send('');
       return;
     }
-    
+
     try {
-      const BlogTool = require('./lib/blog-tool');
-      const blogTool = new BlogTool();
+      // リクエストボディのデコード処理
+      let requestData;
+      
+      // rawBodyを優先的に使用（Firebase Functionsでは通常これが利用可能）
+      if (req.rawBody) {
+        try {
+          // Buffer から UTF-8 文字列に変換
+          const bodyString = Buffer.from(req.rawBody).toString('utf8');
+          console.log('Raw body as UTF-8:', bodyString);
+          requestData = JSON.parse(bodyString);
+        } catch (e) {
+          console.error('Failed to parse rawBody:', e);
+          // フォールバック
+          requestData = req.body;
+        }
+      } else if (typeof req.body === 'string') {
+        // 文字列の場合
+        try {
+          requestData = JSON.parse(req.body);
+        } catch (e) {
+          console.error('Failed to parse string body:', e);
+          requestData = {};
+        }
+      } else {
+        // オブジェクトの場合（既にパース済み）
+        requestData = req.body || {};
+      }
+      
+      console.log('Final parsed data:', JSON.stringify(requestData));
       
       // リクエストボディまたはデフォルト値
       const body = req.body || {};
