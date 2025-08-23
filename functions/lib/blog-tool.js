@@ -477,124 +477,136 @@ ${categoryData.topic}について、最新の情報をまとめた魅力的な�
     }
   }
 
-  // generateProductReviewArticle関数を以下に置き換え
-async generateProductReviewArticle(reviewData, options = {}) {
+  // lib/blog-tool.js のgenerateProductReview関数を以下に完全置き換え
+async generateProductReview(productData, keyword, options = {}) {
   try {
-    console.log('🔍 Generating product review article...');
-    console.log('Review data:', reviewData);
+    console.log('🎯 Generating product review article...');
+    console.log('Product data received:', JSON.stringify(productData, null, 2));
     
-    // 商品情報を整理
-    const productTitle = reviewData.title || reviewData.productTitle || '商品名';
-    const description = reviewData.description || '';
-    const price = reviewData.price || reviewData.productPrice || '';
-    const imageUrl = reviewData.imageUrl || reviewData.thumbnailUrl || '';
-    const affiliateUrl = reviewData.affiliateUrl || '';
-    const rating = reviewData.rating || 4.0;
-    const keyword = options.keyword || productTitle;
+    // 商品データの展開（ダッシュボードからのデータ構造に対応）
+    const title = productData.title || 'レビュー商品';
+    const description = productData.description || '';
+    const price = productData.price || '';
+    const imageUrl = productData.imageUrl || productData.image || '';
+    const affiliateUrl = productData.affiliateUrl || productData.url || '';
+    const rating = productData.rating || '';
+    const features = productData.features || '';
+    const category = productData.category || 'レビュー';
     
-    // 商品カードのHTML（記事に挿入）
-    const productCardHtml = `
-<div style="border: 2px solid #f0f0f0; padding: 20px; margin: 20px 0; border-radius: 8px;">
-  ${imageUrl ? `<img src="${imageUrl}" alt="${productTitle}" style="max-width: 300px; float: left; margin-right: 20px;">` : ''}
-  <h3>${productTitle}</h3>
-  <p><strong>価格:</strong> ${price}</p>
-  <p><strong>評価:</strong> ${rating}/5.0</p>
-  ${affiliateUrl ? `<p><a href="${affiliateUrl}" target="_blank" rel="noopener" style="background: #ff6b35; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">詳細を見る</a></p>` : ''}
-  <div style="clear: both;"></div>
-</div>`;
-    
-    const prompt = `
-商品レビュー記事を作成してください。
+    console.log('Extracted product info:', {
+      title, price, imageUrl, affiliateUrl, rating
+    });
 
-商品情報:
-- 商品名: ${productTitle}
-- 説明: ${description}
+    // プロンプトを改善（商品情報を必ず含める）
+    const prompt = `
+あなたはプロの商品レビュー記者です。以下の商品について、魅力的で詳細なレビュー記事を作成してください。
+
+【商品情報】
+- 商品名: ${title}
 - 価格: ${price}
-- 評価: ${rating}/5.0
+- 説明: ${description}
+- 評価: ${rating}
+- 特徴: ${features}
+- カテゴリー: ${category}
 - キーワード: ${keyword}
 
-要件:
-1. HTML形式で出力（h2, h3, p, ul, li, strong, emタグのみ使用）
-2. 1500-2000文字程度
-3. SEOを意識してキーワード「${keyword}」を自然に含める
-4. 以下の構成で作成：
+【必須要件】
+1. 記事の冒頭に必ず以下のHTML形式で商品情報ボックスを配置してください：
 
-<h2>はじめに</h2>
-- なぜこの商品に注目したか
-- 購入の決め手
+<div style="border: 2px solid #4CAF50; border-radius: 10px; padding: 20px; margin: 20px 0; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);">
+  <h2 style="color: #333; margin-top: 0;">${title}</h2>
+  ${imageUrl ? `<img src="${imageUrl}" alt="${title}" style="max-width: 100%; height: auto; border-radius: 8px; margin: 15px 0;">` : ''}
+  <div style="display: flex; align-items: center; margin: 15px 0;">
+    <span style="font-size: 24px; font-weight: bold; color: #FF5722;">価格: ${price}</span>
+    ${rating ? `<span style="margin-left: 20px; color: #FFC107;">★ ${rating}</span>` : ''}
+  </div>
+  ${description ? `<p style="color: #666; line-height: 1.6;">${description}</p>` : ''}
+  ${affiliateUrl ? `
+  <a href="${affiliateUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; padding: 12px 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 25px; font-weight: bold; margin-top: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+    ▶ 詳細を見る・購入はこちら
+  </a>` : ''}
+</div>
 
-<h2>商品の特徴</h2>
-- 主な特徴を3-5個
-- それぞれ詳しく説明
+2. 記事本文（1500文字以上）に以下を含めてください：
+   - 商品の特徴を3つ以上詳しく説明
+   - 実際の使用シーンや体験談（具体的に）
+   - メリットとデメリット
+   - こんな人におすすめ（3パターン以上）
+   - 競合商品との比較
+   - まとめと購入をおすすめする理由
 
-<h2>実際に使ってみた感想</h2>
-<h3>良かった点</h3>
-- 具体的なメリット
-<h3>改善してほしい点</h3>
-- デメリットや注意点
+3. 記事の最後にも購入リンクを配置：
+${affiliateUrl ? `
+<div style="text-align: center; margin: 30px 0; padding: 20px; background: #FFF3E0; border-radius: 10px;">
+  <p style="font-size: 18px; color: #E65100; margin-bottom: 15px;">＼ 今すぐチェック ／</p>
+  <a href="${affiliateUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, #FF6B6B 0%, #FF8E53 100%); color: white; text-decoration: none; border-radius: 30px; font-size: 18px; font-weight: bold; box-shadow: 0 4px 15px rgba(255,107,107,0.3);">
+    ${title}の詳細はこちら ≫
+  </a>
+</div>` : ''}
 
-<h2>こんな人におすすめ</h2>
-- ターゲットユーザーの説明
+4. SEO最適化：
+   - キーワード「${keyword}」を自然に5回以上含める
+   - 見出しタグ（h2, h3）を適切に使用
+   - 段落を適切に分ける
 
-<h2>まとめ</h2>
-- 総合評価
-- 購入をおすすめする理由
-
-記事本文のHTMLのみを出力してください。`;
+【出力形式】
+- HTML形式で出力
+- 商品情報ボックスは必ず記事の最初に配置
+- styleタグはインラインで記述
+`;
 
     const completion = await this.openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: 'gpt-4o-mini',
       messages: [
         {
-          role: "system",
-          content: "あなたは商品レビューの専門家です。実際に使用した経験に基づいた、信頼性の高いレビューを書きます。"
+          role: 'system',
+          content: 'あなたは経験豊富な商品レビュー専門のライターです。読者の購買意欲を高める魅力的な記事を書きます。'
         },
         {
-          role: "user",
+          role: 'user',
           content: prompt
         }
       ],
       temperature: 0.7,
-      max_tokens: 3000
+      max_tokens: 4000
     });
 
-    let content = this.cleanHtmlContent(completion.choices[0]?.message?.content || '');
+    const content = completion.choices[0]?.message?.content || '';
+    console.log('Generated content length:', content.length);
     
-    // 商品カードを記事の最初と最後に挿入
-    content = productCardHtml + content + productCardHtml;
-    
-    // キーワード密度の最適化
-    content = this.optimizeKeywordDensity(content, keyword);
-    
-    const title = `${productTitle}の詳細レビュー【${new Date().getFullYear()}年最新】`;
-    
-    console.log('✅ Product review article generated with product card');
+    // タイトルの最適化
+    const optimizedTitle = `${title}の詳細レビュー【2025年最新】${keyword}`;
     
     return {
-      title: title,
+      title: optimizedTitle,
       content: content,
-      category: 'レビュー',
-      tags: [keyword, '商品レビュー', '最新', rating >= 4 ? 'おすすめ' : 'レビュー'],
-      status: 'publish',
-      productInfo: {
-        name: productTitle,
-        price: price,
-        rating: rating,
-        imageUrl: imageUrl,
-        affiliateUrl: affiliateUrl
-      }
+      category: category,
+      tags: this.generateTags(keyword, category, title),
+      status: 'publish'
     };
     
   } catch (error) {
-    console.error('❌ Error generating product review:', error);
-    return {
-      title: `${reviewData.title || 'エラー'}のレビュー`,
-      content: '<p>記事の生成中にエラーが発生しました。</p>',
-      category: 'エラー',
-      tags: [],
-      status: 'draft'
-    };
+    console.error('❌ Error in generateProductReview:', error);
+    throw error;
   }
+}
+
+// タグ生成の改善
+generateTags(keyword, category, productTitle) {
+  const tags = [keyword, category];
+  
+  // 商品名から重要な単語を抽出
+  const words = productTitle.split(/[\s　,、。！？]/);
+  words.forEach(word => {
+    if (word.length > 2 && !tags.includes(word)) {
+      tags.push(word);
+    }
+  });
+  
+  // 一般的なタグも追加
+  tags.push('レビュー', '2025年', 'おすすめ');
+  
+  return tags.slice(0, 10); // 最大10個まで
 }
 
   // タイトル生成（独立メソッド）
