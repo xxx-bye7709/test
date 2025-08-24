@@ -1710,6 +1710,8 @@ exports.searchProducts = functions
 /**
  * 商品レビュー記事生成
  */
+// index.jsのgenerateProductReview関数を以下のように修正
+
 exports.generateProductReview = functions
   .region('asia-northeast1')
   .runWith({
@@ -1731,93 +1733,65 @@ exports.generateProductReview = functions
     }
 
     try {
-      // リクエストボディのデコード処理
-      let requestData;
+      // BlogToolクラスをインポート（関数内でインポート）
+      const BlogTool = require('./lib/blog-tool');
+      const blogTool = new BlogTool();
       
-      // rawBodyを優先的に使用（Firebase Functionsでは通常これが利用可能）
-      if (req.rawBody) {
-        try {
-          // Buffer から UTF-8 文字列に変換
-          const bodyString = Buffer.from(req.rawBody).toString('utf8');
-          console.log('Raw body as UTF-8:', bodyString);
-          requestData = JSON.parse(bodyString);
-        } catch (e) {
-          console.error('Failed to parse rawBody:', e);
-          // フォールバック
-          requestData = req.body;
-        }
-      } else if (typeof req.body === 'string') {
-        // 文字列の場合
-        try {
-          requestData = JSON.parse(req.body);
-        } catch (e) {
-          console.error('Failed to parse string body:', e);
-          requestData = {};
-        }
-      } else {
-        // オブジェクトの場合（既にパース済み）
-        requestData = req.body || {};
-      }
+      // リクエストボディの取得
+      const requestData = req.body || {};
       
-      console.log('Final parsed data:', JSON.stringify(requestData));
+      const { 
+        productId = 'test',
+        keyword = 'レビュー',
+        autoPost = true,
+        productData = {}
+      } = requestData;
       
-      // リクエストボディまたはデフォルト値
-      const body = req.body || {};
-      const productData = body.productData || {
-        title: 'デフォルトテスト商品',
-        description: 'テスト投稿',
-        price: '1000円',
-        category: 'テスト'
-      };
-      
-      const keyword = body.keyword || 'テスト';
-      const autoPost = body.autoPost !== false;
-      
-      console.log('Product:', productData.title);
-      console.log('Keyword:', keyword);
-      console.log('AutoPost:', autoPost);
+      console.log('Product data:', productData);
       
       // 記事生成
-      const article = await blogTool.generateProductReviewArticle(
+      const article = await blogTool.generateProductReview(
         productData,
-        { keyword: keyword }
+        keyword,
+        { autoPost }
       );
       
-      console.log('Article generated:', article.title);
+      console.log('Article generated:', {
+        title: article.title,
+        contentLength: article.content?.length
+      });
       
-      let response = {
+      // WordPressに投稿
+      let postResult = { success: false };
+      
+      if (autoPost) {
+        console.log('Auto-posting to WordPress...');
+        postResult = await blogTool.postToWordPress(article);
+        console.log('Post result:', postResult);
+      }
+      
+      // レスポンス作成
+      const response = {
         success: true,
         title: article.title,
         keyword: keyword,
-        productId: body.productId || 'test'
+        productId: productId,
+        postId: postResult.postId || null,
+        postUrl: postResult.url || null,
+        postSuccess: postResult.success || false,
+        message: postResult.success ? 'Posted successfully' : 'Article generated but posting failed',
+        postError: postResult.error || null
       };
       
-      // WordPress投稿
-      if (autoPost) {
-        console.log('Posting to WordPress...');
-        const postResult = await blogTool.postToWordPress(article);
-        
-        if (postResult.success) {
-          response.postId = postResult.postId;
-          response.postUrl = postResult.url;
-          response.postSuccess = true;
-          response.message = 'Posted successfully';
-        } else {
-          response.postSuccess = false;
-          response.postError = postResult.error;
-        }
-      }
-      
       console.log('=== generateProductReview END ===');
-      res.set('Content-Type', 'application/json; charset=utf-8');  // ← この行を追加
       res.json(response);
       
     } catch (error) {
-      console.error('Error:', error);
-        res.set('Content-Type', 'application/json; charset=utf-8');  // ← この行を追加
-      res.status(500).json({ 
-        success: false, 
-        error: error.message 
+      console.error('Error in generateProductReview:', error);
+      res.set('Content-Type', 'application/json; charset=utf-8');
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Unknown error'
       });
     }
   });
