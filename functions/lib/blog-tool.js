@@ -63,7 +63,6 @@ class BlogTool {
   // XMLエスケープ（UTF-8対応）
   escapeXML(str) {
     if (!str) return '';
-    // UTF-8文字列として扱う
     return String(str)
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
@@ -207,36 +206,36 @@ class BlogTool {
     return content;
   }
 
-  // 修正版
+  // WordPressへの投稿（手動XML-RPC）
   async postToWordPress(article) {
-  const https = require('https');
-  
-  try {
-    // 商品レビュー記事かどうかを判定
-    const isProductReview = article.category === 'レビュー' || 
-                           article.tags?.includes('レビュー') ||
-                           article.isProductReview === true;
+    const https = require('https');
     
-    // 商品記事は下書き、通常記事は公開
-    const postStatus = isProductReview ? 'draft' : 'publish';
-    
-    console.log(`📤 Manual XML-RPC posting as ${postStatus}...`);
-    console.log('Article type:', isProductReview ? 'Product Review' : 'Regular Post');
-    
-    const sanitizeForXML = (str) => {
-      if (!str) return '';
-      return str
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&apos;');
-    };
-    
-    const processedTitle = sanitizeForXML(article.title || 'レビュー').substring(0, 100);
-    const processedContent = sanitizeForXML(article.content || '<p>内容</p>').substring(0, 5000);
-    
-    const xmlPayload = `<?xml version="1.0" encoding="UTF-8"?>
+    try {
+      // 商品レビュー記事かどうかを判定
+      const isProductReview = article.category === 'レビュー' || 
+                             article.tags?.includes('レビュー') ||
+                             article.isProductReview === true;
+      
+      // 商品記事は下書き、通常記事は公開
+      const postStatus = isProductReview ? 'draft' : 'publish';
+      
+      console.log(`📤 Manual XML-RPC posting as ${postStatus}...`);
+      console.log('Article type:', isProductReview ? 'Product Review' : 'Regular Post');
+      
+      const sanitizeForXML = (str) => {
+        if (!str) return '';
+        return str
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&apos;');
+      };
+      
+      const processedTitle = sanitizeForXML(article.title || 'レビュー').substring(0, 100);
+      const processedContent = sanitizeForXML(article.content || '<p>内容</p>');
+      
+      const xmlPayload = `<?xml version="1.0" encoding="UTF-8"?>
 <methodCall>
   <methodName>metaWeblog.newPost</methodName>
   <params>
@@ -265,68 +264,68 @@ class BlogTool {
   </params>
 </methodCall>`;
 
-    return new Promise((resolve) => {
-      const url = new URL(this.wordpressUrl);
-      const options = {
-        hostname: url.hostname,
-        port: 443,
-        path: '/xmlrpc.php',
-        method: 'POST',
-        headers: {
-          'Content-Type': 'text/xml; charset=UTF-8',
-          'Content-Length': Buffer.byteLength(xmlPayload),
-          'User-Agent': 'WordPress/6.0'
-        }
-      };
-      
-      const req = https.request(options, (res) => {
-        let data = '';
-        res.on('data', (chunk) => { data += chunk; });
-        res.on('end', () => {
-          console.log('Response:', data.substring(0, 500));
-          
-          if (data.includes('<html') || data.includes('<!DOCTYPE')) {
-            resolve({
-              success: false,
-              error: 'Blocked by security',
-              message: 'セキュリティブロック'
-            });
-          } else if (data.includes('<string>') || data.includes('<int>')) {
-            const idMatch = data.match(/<(?:string|int)>(\d+)<\/(?:string|int)>/);
-            if (idMatch) {
-              const postUrl = isProductReview
-                ? `${this.wordpressUrl}/wp-admin/post.php?post=${idMatch[1]}&action=edit`
-                : `${this.wordpressUrl}/?p=${idMatch[1]}`;
-              
-              resolve({
-                success: true,
-                postId: idMatch[1],
-                url: postUrl,
-                status: postStatus,
-                message: isProductReview 
-                  ? '下書きとして保存されました' 
-                  : '記事が公開されました'
-              });
-            } else {
-              resolve({ success: false, error: 'ID not found' });
-            }
-          } else {
-            resolve({ success: false, error: 'Unknown error' });
+      return new Promise((resolve) => {
+        const url = new URL(this.wordpressUrl);
+        const options = {
+          hostname: url.hostname,
+          port: 443,
+          path: '/xmlrpc.php',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'text/xml; charset=UTF-8',
+            'Content-Length': Buffer.byteLength(xmlPayload),
+            'User-Agent': 'WordPress/6.0'
           }
+        };
+        
+        const req = https.request(options, (res) => {
+          let data = '';
+          res.on('data', (chunk) => { data += chunk; });
+          res.on('end', () => {
+            console.log('Response:', data.substring(0, 500));
+            
+            if (data.includes('<html') || data.includes('<!DOCTYPE')) {
+              resolve({
+                success: false,
+                error: 'Blocked by security',
+                message: 'セキュリティブロック'
+              });
+            } else if (data.includes('<string>') || data.includes('<int>')) {
+              const idMatch = data.match(/<(?:string|int)>(\d+)<\/(?:string|int)>/);
+              if (idMatch) {
+                const postUrl = isProductReview
+                  ? `${this.wordpressUrl}/wp-admin/post.php?post=${idMatch[1]}&action=edit`
+                  : `${this.wordpressUrl}/?p=${idMatch[1]}`;
+                
+                resolve({
+                  success: true,
+                  postId: idMatch[1],
+                  url: postUrl,
+                  status: postStatus,
+                  message: isProductReview 
+                    ? '下書きとして保存されました' 
+                    : '記事が公開されました'
+                });
+              } else {
+                resolve({ success: false, error: 'ID not found' });
+              }
+            } else {
+              resolve({ success: false, error: 'Unknown error' });
+            }
+          });
         });
+        
+        req.on('error', (error) => {
+          resolve({ success: false, error: error.message });
+        });
+        
+        req.write(xmlPayload);
+        req.end();
       });
-      
-      req.on('error', (error) => {
-        resolve({ success: false, error: error.message });
-      });
-      
-      req.write(xmlPayload);
-      req.end();
-    });
-  } catch (error) {
-    return { success: false, error: error.message };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
   }
-}
 
   // GPTを使った記事生成（汎用）
   async generateWithGPT(category, template) {
@@ -430,53 +429,52 @@ ${categoryData.topic}について、最新の情報をまとめた魅力的な�
     }
   }
 
- // blog-tool.jsのgenerateProductReview関数を以下に置き換え
-
-async generateProductReview(productData, keyword, options = {}) {
-  try {
-    console.log('🎯 Generating HIGH CVR product review article...');
-    
-    // より賢いアダルトコンテンツ検出
-    const strongAdultKeywords = ['糞', '尿', '肉便器', '陵辱', '強姦', '犯す', 'ババア'];
-    const mediumAdultKeywords = ['ちんこ', 'まんこ', 'ズポズポ', 'ヌルヌル', 'ビチャビチャ'];
-    
-    const originalTitle = productData.title || '';
-    const originalDescription = productData.description || '';
-    const genre = productData.genre || '';
-    
-    let isStrongAdult = strongAdultKeywords.some(word => 
-      originalTitle.includes(word) || originalDescription.includes(word) || genre.includes(word)
-    );
-    
-    let mediumCount = mediumAdultKeywords.filter(word => 
-      originalTitle.includes(word) || originalDescription.includes(word) || genre.includes(word)
-    ).length;
-    
-    const containsAdultContent = isStrongAdult || mediumCount >= 3;
-    
-    console.log('Adult content check:', containsAdultContent ? '⚠️ Detected' : '✅ Normal');
-    
-    // 商品データの準備
-    const title = originalTitle.substring(0, 100);
-    const price = productData.price || '';
-    const affiliateUrl = productData.affiliateUrl || productData.url || '';
-    const rating = parseFloat(productData.rating || '4.5');
-    const reviewCount = productData.reviewCount || Math.floor(Math.random() * 500) + 100;
-    const maker = productData.maker || '';
-    const imageUrl = productData.imageUrl || productData.image || '';
-    
-    // 価格フォーマット
-    const priceNum = price.replace(/[^0-9]/g, '');
-    const priceFormatted = priceNum ? `¥${parseInt(priceNum).toLocaleString()}` : price;
-    
-    // 評価の星
-    const ratingStars = '★'.repeat(Math.floor(rating)) + '☆'.repeat(5 - Math.floor(rating));
-    
-    // セーフテンプレート（過激なコンテンツ用）
-    if (containsAdultContent) {
-      console.log('Using safe template for adult content');
+  // 商品レビュー記事生成
+  async generateProductReview(productData, keyword, options = {}) {
+    try {
+      console.log('🎯 Generating HIGH CVR product review article...');
       
-      const safeContent = `
+      // より賢いアダルトコンテンツ検出
+      const strongAdultKeywords = ['糞', '尿', '肉便器', '陵辱', '強姦', '犯す', 'ババア'];
+      const mediumAdultKeywords = ['ちんこ', 'まんこ', 'ズポズポ', 'ヌルヌル', 'ビチャビチャ'];
+      
+      const originalTitle = productData.title || '';
+      const originalDescription = productData.description || '';
+      const genre = productData.genre || '';
+      
+      let isStrongAdult = strongAdultKeywords.some(word => 
+        originalTitle.includes(word) || originalDescription.includes(word) || genre.includes(word)
+      );
+      
+      let mediumCount = mediumAdultKeywords.filter(word => 
+        originalTitle.includes(word) || originalDescription.includes(word) || genre.includes(word)
+      ).length;
+      
+      const containsAdultContent = isStrongAdult || mediumCount >= 3;
+      
+      console.log('Adult content check:', containsAdultContent ? '⚠️ Detected' : '✅ Normal');
+      
+      // 商品データの準備
+      const title = originalTitle.substring(0, 100);
+      const price = productData.price || '';
+      const affiliateUrl = productData.affiliateUrl || productData.url || '';
+      const rating = parseFloat(productData.rating || '4.5');
+      const reviewCount = productData.reviewCount || Math.floor(Math.random() * 500) + 100;
+      const maker = productData.maker || '';
+      const imageUrl = productData.imageUrl || productData.image || '';
+      
+      // 価格フォーマット
+      const priceNum = price.replace(/[^0-9]/g, '');
+      const priceFormatted = priceNum ? `¥${parseInt(priceNum).toLocaleString()}` : price;
+      
+      // 評価の星
+      const ratingStars = '★'.repeat(Math.floor(rating)) + '☆'.repeat(5 - Math.floor(rating));
+      
+      // セーフテンプレート（過激なコンテンツ用）
+      if (containsAdultContent) {
+        console.log('Using safe template for adult content');
+        
+        const safeContent = `
 <div style="max-width: 900px; margin: 0 auto; padding: 20px;">
   <div style="background: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%); color: white; padding: 30px; border-radius: 15px; text-align: center; margin-bottom: 30px;">
     <h2 style="font-size: 24px;">【限定商品】${keyword}カテゴリーの注目商品</h2>
@@ -496,24 +494,24 @@ async generateProductReview(productData, keyword, options = {}) {
     <p>本商品は年齢制限がある場合があります。公式サイトで詳細をご確認ください。</p>
   </div>
 </div>`;
+        
+        return {
+          title: `【限定】${keyword}カテゴリー注目商品`,
+          content: safeContent,
+          category: 'レビュー',
+          tags: [keyword, 'レビュー', '限定'],
+          status: 'draft',
+          isProductReview: true
+        };
+      }
       
-      return {
-        title: `【限定】${keyword}カテゴリー注目商品`,
-        content: safeContent,
-        category: 'レビュー',
-        tags: [keyword, 'レビュー', '限定'],
-        status: 'draft',
-        isProductReview: true
-      };
-    }
-    
-    // 通常商品：OpenAI APIで記事生成
-    console.log('Generating with OpenAI API...');
-    
-    try {
-      // シンプルで確実なプロンプト
-      const simplePrompt = `
-以下の商品について、魅力的なレビュー記事を作成してください。
+      // 通常商品：OpenAI APIで記事生成
+      console.log('Generating with OpenAI API...');
+      
+      try {
+        // シンプルで確実なプロンプト
+        const simplePrompt = `
+以下の商品について、購買意欲を高める詳細なレビュー記事をHTML形式で作成してください。
 
 商品名：${title}
 価格：${priceFormatted}
@@ -521,78 +519,86 @@ async generateProductReview(productData, keyword, options = {}) {
 メーカー：${maker}
 キーワード：${keyword}
 
-以下のHTML形式で2000文字以上の詳細なレビュー記事を作成してください。
-購入を検討している人に向けて、商品の魅力を最大限に伝えてください。`;
+必ず以下の要素を含めてください：
+1. 商品の特徴を3つ以上
+2. メリットとデメリット
+3. こんな人におすすめ（3パターン）
+4. 購入者の声（3つ以上）
+5. よくある質問（3つ以上）
 
-      const completion = await this.openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: 'あなたは商品レビューの専門家です。購買意欲を高める魅力的な記事を書いてください。'
-          },
-          {
-            role: 'user',
-            content: simplePrompt
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 3000
-      });
-      
-      let generatedContent = completion.choices[0]?.message?.content || '';
-      
-      console.log('OpenAI response length:', generatedContent.length);
-      
-      // コンテンツが短すぎる場合はフォールバック
-      if (generatedContent.length < 500) {
-        console.log('Content too short, using fallback template');
-        generatedContent = this.generateFallbackContent(productData, keyword, priceFormatted, rating, reviewCount, affiliateUrl);
+2000文字以上の詳細な記事を作成してください。
+HTMLタグは h2, h3, p, ul, li, div, table, tr, td, strong, span, a のみ使用。
+アフィリエイトリンク（${affiliateUrl}）を複数箇所に配置してください。`;
+
+        const completion = await this.openai.chat.completions.create({
+          model: 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content: 'あなたは商品レビューの専門家です。購買意欲を高める魅力的な記事を書いてください。'
+            },
+            {
+              role: 'user',
+              content: simplePrompt
+            }
+          ],
+          temperature: 0.7,
+          max_tokens: 3000
+        });
+        
+        let generatedContent = completion.choices[0]?.message?.content || '';
+        
+        console.log('OpenAI response length:', generatedContent.length);
+        
+        // コンテンツが短すぎる場合はフォールバック
+        if (generatedContent.length < 500) {
+          console.log('Content too short, using fallback template');
+          generatedContent = this.generateFallbackContent(productData, keyword, priceFormatted, rating, reviewCount, affiliateUrl);
+        }
+        
+        // 最適化されたタイトル
+        const optimizedTitle = `【${reviewCount}人が購入】${title.substring(0, 40)}...の詳細レビュー｜${keyword}`;
+        
+        return {
+          title: optimizedTitle,
+          content: generatedContent,
+          category: 'レビュー',
+          tags: [keyword, 'レビュー', '口コミ', '評判', '最安値', '2025年'],
+          status: 'draft',
+          isProductReview: true
+        };
+        
+      } catch (openaiError) {
+        console.error('OpenAI API error:', openaiError);
+        // OpenAIエラー時はフォールバックテンプレート使用
+        const fallbackContent = this.generateFallbackContent(productData, keyword, priceFormatted, rating, reviewCount, affiliateUrl);
+        
+        return {
+          title: `【話題】${title.substring(0, 40)}...のレビュー｜${keyword}`,
+          content: fallbackContent,
+          category: 'レビュー',
+          tags: [keyword, 'レビュー', '商品'],
+          status: 'draft',
+          isProductReview: true
+        };
       }
       
-      // 最適化されたタイトル
-      const optimizedTitle = `【${reviewCount}人が購入】${title.substring(0, 40)}...の詳細レビュー｜${keyword}`;
-      
-      return {
-        title: optimizedTitle,
-        content: generatedContent,
-        category: 'レビュー',
-        tags: [keyword, 'レビュー', '口コミ', '評判', '最安値', '2025年'],
-        status: 'draft',
-        isProductReview: true
-      };
-      
-    } catch (openaiError) {
-      console.error('OpenAI API error:', openaiError);
-      // OpenAIエラー時はフォールバックテンプレート使用
-      const fallbackContent = this.generateFallbackContent(productData, keyword, priceFormatted, rating, reviewCount, affiliateUrl);
-      
-      return {
-        title: `【話題】${title.substring(0, 40)}...のレビュー｜${keyword}`,
-        content: fallbackContent,
-        category: 'レビュー',
-        tags: [keyword, 'レビュー', '商品'],
-        status: 'draft',
-        isProductReview: true
-      };
+    } catch (error) {
+      console.error('❌ Error in generateProductReview:', error);
+      throw error;
     }
-    
-  } catch (error) {
-    console.error('❌ Error in generateProductReview:', error);
-    throw error;
   }
-}
 
-// フォールバックコンテンツ生成（OpenAI失敗時用）
-generateFallbackContent(productData, keyword, priceFormatted, rating, reviewCount, affiliateUrl) {
-  const title = productData.title || '';
-  const description = productData.description || '';
-  const maker = productData.maker || '';
-  const genre = productData.genre || '';
-  const imageUrl = productData.imageUrl || '';
-  const ratingStars = '★'.repeat(Math.floor(rating)) + '☆'.repeat(5 - Math.floor(rating));
-  
-  return `
+  // フォールバックコンテンツ生成（OpenAI失敗時用）
+  generateFallbackContent(productData, keyword, priceFormatted, rating, reviewCount, affiliateUrl) {
+    const title = productData.title || '';
+    const description = productData.description || '';
+    const maker = productData.maker || '';
+    const genre = productData.genre || '';
+    const imageUrl = productData.imageUrl || '';
+    const ratingStars = '★'.repeat(Math.floor(rating)) + '☆'.repeat(5 - Math.floor(rating));
+    
+    return `
 <div style="max-width: 900px; margin: 0 auto; padding: 20px; font-family: 'Noto Sans JP', sans-serif;">
   
   <!-- ヒーローセクション -->
@@ -715,7 +721,7 @@ generateFallbackContent(productData, keyword, priceFormatted, rating, reviewCoun
   </div>
   
 </div>`;
-}
+  }
 
   // タグ生成の改善
   generateTags(keyword, category, productTitle) {
@@ -737,6 +743,6 @@ generateFallbackContent(productData, keyword, priceFormatted, rating, reviewCoun
     
     return tags.slice(0, 10); // 最大10個まで
   }
-}  // ← BlogToolクラスの閉じ括弧（重要）
+}  // BlogToolクラスの閉じ括弧
 
 module.exports = BlogTool;
