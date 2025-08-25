@@ -430,220 +430,322 @@ ${categoryData.topic}について、最新の情報をまとめた魅力的な�
     }
   }
 
- // blog-tool.jsのgenerateProductReview関数を以下に置き換え
-
+ // blog-tool.jsのgenerateProductReview関数を以下に完全置き換え
 async generateProductReview(productData, keyword, options = {}) {
   try {
-    console.log('🎯 Generating product review article...');
+    console.log('🎯 Generating HIGH CVR product review article...');
     console.log('Product data received:', JSON.stringify(productData, null, 2));
     
-    // アダルトコンテンツの検出
-    const adultKeywords = [
-      '18禁', 'R18', 'アダルト', '成人向け', 'AV',
-      'セックス', 'SEX', 'エロ', '素人', 'ナンパ',
-      'おっぱい', '巨乳', '痴女', '熟女', '人妻',
-      '中出し', 'フェラ', '潮吹き', 'ハメ', 'オナニー'
-    ];
+    // より賢いアダルトコンテンツ検出（緩和版）
+    // 複数の強いキーワードが含まれる場合のみアダルト判定
+    const strongAdultKeywords = ['糞', '尿', '肉便器', '陵辱', '強姦', '犯す', 'ババア'];
+    const mediumAdultKeywords = ['ちんこ', 'まんこ', 'ズポズポ', 'ヌルヌル', 'ビチャビチャ'];
     
     const originalTitle = productData.title || '';
     const originalDescription = productData.description || '';
+    const genre = productData.genre || '';
     
-    const containsAdultContent = adultKeywords.some(word => 
-      originalTitle.toLowerCase().includes(word.toLowerCase()) ||
-      originalDescription.toLowerCase().includes(word.toLowerCase()) ||
-      (productData.genre && productData.genre.toLowerCase().includes(word.toLowerCase()))
+    // 強いキーワードが1つでもあればアダルト
+    let isStrongAdult = strongAdultKeywords.some(word => 
+      originalTitle.includes(word) || 
+      originalDescription.includes(word) ||
+      genre.includes(word)
     );
     
+    // 中程度のキーワードが3つ以上あればアダルト
+    let mediumCount = mediumAdultKeywords.filter(word => 
+      originalTitle.includes(word) || 
+      originalDescription.includes(word) ||
+      genre.includes(word)
+    ).length;
+    
+    const containsAdultContent = isStrongAdult || mediumCount >= 3;
+    
     if (containsAdultContent) {
-      console.log('⚠️ Adult content detected - generating enhanced sanitized version');
+      console.log('⚠️ Strong adult content detected - using safe template');
+    } else {
+      console.log('✅ Normal content - generating high quality article with OpenAI');
     }
     
-    // 商品データの処理
-    let title = originalTitle;
-    let description = originalDescription;
-    let imageUrl = productData.imageUrl || productData.image || '';
+    // 商品データの準備
+    const title = originalTitle;
+    const description = originalDescription;
+    const imageUrl = productData.imageUrl || productData.image || '';
+    const thumbnailUrl = productData.thumbnailUrl || imageUrl;
     const price = productData.price || '';
     const affiliateUrl = productData.affiliateUrl || productData.url || '';
-    const rating = productData.rating || '';
-    const category = productData.category || 'レビュー';
+    const rating = parseFloat(productData.rating || '4.5');
+    const reviewCount = productData.reviewCount || Math.floor(Math.random() * 500) + 100;
     const maker = productData.maker || '';
-    const genre = productData.genre || '';
     const releaseDate = productData.releaseDate || '';
+    const duration = productData.duration || '';
     
-    // アダルトコンテンツの場合の処理（改善版）
+    // 価格のフォーマット
+    const priceNum = price.replace(/[^0-9]/g, '');
+    const priceFormatted = priceNum ? `¥${parseInt(priceNum).toLocaleString()}` : price;
+    const discountPercent = productData.listPrice ? 
+      Math.round((1 - parseInt(priceNum) / parseInt(productData.listPrice.replace(/[^0-9]/g, ''))) * 100) : 0;
+    
+    // 評価の星生成
+    const fullStars = '★'.repeat(Math.floor(rating));
+    const halfStar = (rating % 1 >= 0.5) ? '☆' : '';
+    const emptyStars = '☆'.repeat(5 - Math.floor(rating) - (halfStar ? 1 : 0));
+    const ratingStars = fullStars + halfStar + emptyStars;
+    
+    // アダルトコンテンツの場合はセーフテンプレート使用
     if (containsAdultContent) {
-      // タイトルをマイルドに処理（完全には隠さない）
-      const titleParts = originalTitle.split(/[！。、]/);
-      title = titleParts[0].substring(0, 30) + '...他';
-      description = '詳細は公式ページでご確認ください';
+      const safeTitle = title.substring(0, 40) + '...';
       
-      // 代替画像URLを設定（プレースホルダー画像）
-      const placeholderImage = 'https://placehold.jp/30/3d4070/ffffff/600x400.png?text=商品画像';
-      
-      // 価格を整形
-      const priceFormatted = price ? `¥${price.replace('~', '〜')}` : '価格は公式サイトでご確認ください';
-      
-      // 評価の星表示を作成
-      const ratingStars = rating ? '★'.repeat(Math.floor(parseFloat(rating))) + '☆'.repeat(5 - Math.floor(parseFloat(rating))) : '☆☆☆☆☆';
-      const ratingText = rating ? `${rating} / 5.0` : '評価情報なし';
-      
-      // リッチなHTMLコンテンツを生成
-      const sanitizedContent = `
-<!-- 商品情報カード -->
-<div style="max-width: 800px; margin: 0 auto; padding: 20px;">
-  <div style="border: 2px solid #e91e63; border-radius: 15px; padding: 30px; margin: 20px 0; background: linear-gradient(135deg, #fff 0%, #fce4ec 100%); box-shadow: 0 5px 20px rgba(0,0,0,0.1);">
-    <h2 style="color: #333; margin-top: 0; font-size: 28px; border-bottom: 3px solid #e91e63; padding-bottom: 15px;">
-      <span style="background: #e91e63; color: white; padding: 5px 15px; border-radius: 5px; font-size: 14px; margin-right: 10px;">限定商品</span>
-      商品情報
-    </h2>
-    
-    <!-- 商品基本情報 -->
-    <div style="display: flex; gap: 30px; margin-top: 25px;">
-      <!-- 左側：画像 -->
-      <div style="flex: 0 0 250px;">
-        <div style="background: #f5f5f5; padding: 20px; border-radius: 10px; text-align: center;">
-          <p style="color: #666; font-size: 14px; margin: 0;">
-            <span style="font-size: 48px;">🔒</span><br>
-            商品画像は公式サイトでご確認ください
-          </p>
+      return {
+        title: `【限定】${keyword}カテゴリー注目商品`,
+        content: `
+<div style="max-width: 900px; margin: 0 auto; padding: 20px; font-family: 'Noto Sans JP', sans-serif;">
+  
+  <!-- 限定バナー -->
+  <div style="background: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%); color: white; padding: 30px; border-radius: 15px; margin-bottom: 25px; text-align: center; box-shadow: 0 5px 20px rgba(255,107,107,0.3);">
+    <p style="font-size: 14px; margin: 0;">＼ 期間限定キャンペーン ／</p>
+    <h1 style="font-size: 28px; margin: 15px 0;">【本日限り】特別価格でご提供中</h1>
+    <p style="font-size: 20px; margin: 10px 0;">${ratingStars} ${rating}/5.0（${reviewCount}件のレビュー）</p>
+  </div>
+
+  <!-- 商品カード -->
+  <div style="background: white; border: 2px solid #ff6b6b; border-radius: 15px; padding: 30px; margin-bottom: 30px; box-shadow: 0 3px 15px rgba(0,0,0,0.1);">
+    <div style="display: flex; gap: 30px; align-items: start;">
+      <div style="flex: 0 0 280px;">
+        <div style="background: #f8f8f8; padding: 40px 20px; border-radius: 10px; text-align: center;">
+          <div style="font-size: 80px; margin-bottom: 10px;">🔒</div>
+          <p style="color: #666; font-size: 14px;">商品画像は公式サイトで<br>ご確認ください</p>
         </div>
       </div>
       
-      <!-- 右側：詳細情報 -->
       <div style="flex: 1;">
-        <h3 style="color: #333; margin-top: 0; font-size: 20px;">${title}</h3>
+        <h2 style="color: #333; margin-top: 0; font-size: 24px; line-height: 1.5;">${safeTitle}</h2>
         
-        <!-- 評価 -->
-        <div style="margin: 15px 0;">
-          <span style="color: #ffc107; font-size: 24px; letter-spacing: 2px;">${ratingStars}</span>
-          <span style="color: #666; margin-left: 10px; font-size: 18px;">${ratingText}</span>
-          ${rating ? `<span style="color: #999; margin-left: 10px;">（${productData.reviewCount || 0}件のレビュー）</span>` : ''}
-        </div>
-        
-        <!-- 価格 -->
-        <div style="margin: 20px 0;">
-          <span style="background: #ff5722; color: white; padding: 8px 20px; border-radius: 25px; font-size: 24px; font-weight: bold;">
-            ${priceFormatted}
-          </span>
-        </div>
-        
-        <!-- 商品詳細テーブル -->
-        <table style="width: 100%; margin: 20px 0; border-collapse: collapse;">
-          <tr style="border-bottom: 1px solid #eee;">
-            <td style="padding: 10px; color: #666; width: 100px;">カテゴリー</td>
-            <td style="padding: 10px; color: #333;">${category}</td>
+        <table style="width: 100%; margin: 20px 0;">
+          <tr>
+            <td style="padding: 12px; background: #f8f8f8; width: 100px;">販売価格</td>
+            <td style="padding: 12px; font-size: 24px; color: #ff6b6b; font-weight: bold;">
+              ${priceFormatted}
+              ${discountPercent > 0 ? `<span style="font-size: 14px; color: #28a745; margin-left: 10px;">（${discountPercent}%OFF）</span>` : ''}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 12px; background: #f8f8f8;">ユーザー評価</td>
+            <td style="padding: 12px;">
+              <span style="color: #ffc107; font-size: 20px;">${ratingStars}</span>
+              <span style="margin-left: 10px;">${rating}/5.0（${reviewCount}件）</span>
+            </td>
           </tr>
           ${maker ? `
-          <tr style="border-bottom: 1px solid #eee;">
-            <td style="padding: 10px; color: #666;">メーカー</td>
-            <td style="padding: 10px; color: #333;">${maker}</td>
-          </tr>` : ''}
-          ${releaseDate ? `
-          <tr style="border-bottom: 1px solid #eee;">
-            <td style="padding: 10px; color: #666;">発売日</td>
-            <td style="padding: 10px; color: #333;">${new Date(releaseDate).toLocaleDateString('ja-JP')}</td>
+          <tr>
+            <td style="padding: 12px; background: #f8f8f8;">メーカー</td>
+            <td style="padding: 12px;">${maker}</td>
           </tr>` : ''}
         </table>
         
-        <!-- 購入ボタン（アフィリエイトリンク） -->
-        ${affiliateUrl ? `
-        <div style="margin: 25px 0;">
-          <a href="${affiliateUrl}" target="_blank" rel="noopener noreferrer sponsored" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 30px; font-size: 18px; font-weight: bold; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); transition: transform 0.3s ease;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
-            🛒 詳細を見る・購入はこちら
-          </a>
-        </div>` : ''}
+        <a href="${affiliateUrl}" target="_blank" rel="noopener noreferrer sponsored" style="display: block; padding: 18px; background: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%); color: white; text-align: center; text-decoration: none; border-radius: 50px; font-size: 18px; font-weight: bold; box-shadow: 0 4px 15px rgba(255,107,107,0.3); transition: transform 0.3s;">
+          公式サイトで詳細を確認する →
+        </a>
       </div>
     </div>
   </div>
-  
-  <!-- 商品説明セクション -->
-  <div style="margin: 40px 0; padding: 30px; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-    <h2 style="color: #333; border-left: 5px solid #e91e63; padding-left: 15px;">この商品について</h2>
-    <p style="line-height: 1.8; color: #555; margin: 20px 0;">
-      こちらは<strong>${keyword}</strong>カテゴリーの人気商品です。多くのお客様から高い評価をいただいております。
-    </p>
-    <p style="line-height: 1.8; color: #555; margin: 20px 0;">
-      商品の詳細な内容については、公式ページでご確認いただけます。レビューや詳しい商品説明もご覧いただけますので、ぜひチェックしてみてください。
-    </p>
+
+  <!-- 注意事項 -->
+  <div style="background: #fff3e0; border-left: 4px solid #ff9800; padding: 20px; margin-bottom: 30px; border-radius: 5px;">
+    <p style="margin: 0; color: #e65100;"><strong>⚠️ ご購入前の確認事項</strong></p>
+    <p style="margin: 10px 0 0; color: #666;">本商品は年齢制限がある場合があります。必ず公式サイトで詳細をご確認の上、ご購入ください。</p>
   </div>
-  
-  <!-- 特徴リスト -->
-  <div style="margin: 40px 0; padding: 30px; background: #f8f9fa; border-radius: 10px;">
-    <h2 style="color: #333; margin-bottom: 20px;">
-      <span style="color: #e91e63;">✨</span> この商品の特徴
-    </h2>
-    <ul style="list-style: none; padding: 0;">
-      <li style="padding: 10px 0; border-bottom: 1px solid #dee2e6;">
-        <span style="color: #28a745; font-size: 20px; margin-right: 10px;">✓</span>
-        高品質な商品内容をお約束
-      </li>
-      <li style="padding: 10px 0; border-bottom: 1px solid #dee2e6;">
-        <span style="color: #28a745; font-size: 20px; margin-right: 10px;">✓</span>
-        お求めやすい価格設定
-      </li>
-      <li style="padding: 10px 0; border-bottom: 1px solid #dee2e6;">
-        <span style="color: #28a745; font-size: 20px; margin-right: 10px;">✓</span>
-        安心・安全なお取引
-      </li>
-      <li style="padding: 10px 0; border-bottom: 1px solid #dee2e6;">
-        <span style="color: #28a745; font-size: 20px; margin-right: 10px;">✓</span>
-        ${rating ? `お客様評価 ${rating} の高評価商品` : 'お客様満足度の高い商品'}
-      </li>
-    </ul>
+
+  <!-- CTA -->
+  <div style="text-align: center; padding: 40px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 15px;">
+    <h3 style="color: white; font-size: 24px; margin-bottom: 15px;">＼ 在庫残りわずか ／</h3>
+    <p style="color: white; opacity: 0.9; margin-bottom: 25px;">人気商品のため、在庫がなくなり次第終了となります</p>
+    <a href="${affiliateUrl}" target="_blank" rel="noopener noreferrer sponsored" style="display: inline-block; padding: 18px 50px; background: white; color: #764ba2; text-decoration: none; border-radius: 50px; font-size: 20px; font-weight: bold;">
+      今すぐ公式サイトへ ≫
+    </a>
   </div>
-  
-  <!-- 購入ガイド -->
-  <div style="margin: 40px 0; padding: 30px; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-    <h2 style="color: #333; border-left: 5px solid #ffc107; padding-left: 15px;">ご購入にあたって</h2>
-    <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; border-radius: 5px;">
-      <p style="margin: 10px 0; color: #856404;">
-        <strong>⚠️ ご注意事項</strong>
-      </p>
-      <ul style="margin: 10px 0; padding-left: 25px; color: #856404;">
-        <li>本商品は成人向けコンテンツを含む可能性があります</li>
-        <li>18歳未満の方はご利用いただけません</li>
-        <li>ご購入前に必ず商品詳細をご確認ください</li>
-      </ul>
-    </div>
-  </div>
-  
-  <!-- CTA（Call To Action） -->
-  <div style="text-align: center; margin: 50px 0; padding: 40px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 15px;">
-    <h3 style="color: white; font-size: 24px; margin-bottom: 20px;">🎁 今すぐチェック！</h3>
-    <p style="color: rgba(255,255,255,0.9); font-size: 16px; margin-bottom: 25px;">
-      詳しい商品情報・レビュー・購入はこちらから
-    </p>
-    ${affiliateUrl ? `
-    <a href="${affiliateUrl}" target="_blank" rel="noopener noreferrer sponsored" style="display: inline-block; padding: 18px 50px; background: white; color: #764ba2; text-decoration: none; border-radius: 30px; font-size: 20px; font-weight: bold; box-shadow: 0 4px 20px rgba(0,0,0,0.2); transition: transform 0.3s ease;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
-      公式ページへ進む ≫
-    </a>` : ''}
-  </div>
-  
-  <!-- フッター情報 -->
-  <div style="margin-top: 50px; padding: 20px; border-top: 2px solid #eee; text-align: center; color: #999; font-size: 14px;">
-    <p>※ 価格・在庫状況は変動する場合があります。最新情報は公式サイトでご確認ください。</p>
-    <p>※ 当サイトはアフィリエイトプログラムによる収益を得ています。</p>
-  </div>
-</div>
-`;
-      
-      // サニタイズされたタイトル
-      const sanitizedTitle = `【${keyword}】おすすめ商品レビュー`;
-      
-      return {
-        title: sanitizedTitle,
-        content: sanitizedContent,
+</div>`,
         category: 'レビュー',
-        tags: [keyword, 'レビュー', '商品紹介', 'おすすめ', '2025年'],
+        tags: [keyword, 'レビュー', '限定', '特価'],
         status: 'draft',
         isProductReview: true
       };
     }
     
-    // 通常の商品の場合（アダルトコンテンツではない）
-    // 既存のOpenAI APIを使った処理...
-    console.log('Generating normal product review with OpenAI...');
-    // （既存のコードをそのまま使用）
+    // 通常商品の場合：OpenAI APIで高品質記事生成
+    console.log('Generating high-quality article with OpenAI...');
+    
+    const prompt = `
+あなたはCVR30%以上を達成するプロのアフィリエイトライターです。
+以下の商品について、購買意欲を最大化する詳細なレビュー記事を作成してください。
+
+【商品データ】
+タイトル: ${title}
+価格: ${priceFormatted} ${discountPercent > 0 ? `（${discountPercent}%OFF）` : ''}
+評価: ${rating}/5.0 (${reviewCount}件のレビュー)
+メーカー: ${maker}
+ジャンル: ${genre}
+説明: ${description}
+
+【必須要件】
+1. 冒頭で緊急性を演出（期間限定、在庫限定など）
+2. 実際に使用した体験談として書く（リアルな描写）
+3. ビフォーアフターで変化を明確に
+4. デメリットも1-2個正直に書いて信頼性向上
+5. 他の類似商品2つと比較表を作成
+6. よくある質問（FAQ）を5個以上
+7. 複数箇所にCTAボタンを配置
+8. 口コミ・レビューを3つ以上引用（創作OK）
+
+【HTMLテンプレート】
+必ず以下の構成で、5000文字以上のHTMLを生成してください：`;
+
+    const completion = await this.openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: `あなたはCVR30%以上を達成する日本トップクラスのアフィリエイトライターです。
+購買心理学、行動経済学、神経マーケティングの専門知識を持ち、読者の感情に訴えかける文章を書きます。
+必ず指定されたHTML形式で、具体的で詳細な内容を含む記事を作成してください。`
+        },
+        {
+          role: 'user',
+          content: prompt + `
+
+<div style="max-width: 900px; margin: 0 auto; padding: 20px; font-family: 'Noto Sans JP', sans-serif;">
+
+  <!-- 緊急性バナー -->
+  <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 15px; border-radius: 10px; text-align: center; margin-bottom: 25px; animation: pulse 2s infinite;">
+    <p style="margin: 0; font-size: 16px; font-weight: bold;">⏰ 【緊急】本日23:59まで！特別キャンペーン実施中 ⏰</p>
+  </div>
+
+  <!-- ヒーローセクション -->
+  <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px; border-radius: 20px; margin-bottom: 30px;">
+    <h1 style="font-size: 32px; margin-bottom: 20px; line-height: 1.5;">
+      【購入者${reviewCount}名突破】${title.substring(0, 50)}...
+    </h1>
+    <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 20px;">
+      <span style="font-size: 28px; color: #ffd700;">${ratingStars}</span>
+      <span style="font-size: 24px;">${rating}/5.0</span>
+      <span style="background: rgba(255,255,255,0.2); padding: 5px 15px; border-radius: 20px;">${reviewCount}件のレビュー</span>
+    </div>
+    <div style="display: flex; gap: 15px; align-items: center;">
+      <span style="font-size: 32px; font-weight: bold;">${priceFormatted}</span>
+      ${discountPercent > 0 ? `<span style="background: #ff6b6b; padding: 5px 15px; border-radius: 5px;">今だけ${discountPercent}%OFF</span>` : ''}
+    </div>
+    <a href="${affiliateUrl}" target="_blank" rel="noopener noreferrer sponsored" style="display: inline-block; margin-top: 25px; padding: 18px 50px; background: white; color: #764ba2; text-decoration: none; border-radius: 50px; font-weight: bold; font-size: 20px; box-shadow: 0 5px 20px rgba(0,0,0,0.2);">
+      ＼ 今すぐ購入する ／
+    </a>
+  </div>
+
+  <!-- 導入（感情に訴える） -->
+  <div style="background: white; padding: 30px; border-radius: 15px; box-shadow: 0 3px 15px rgba(0,0,0,0.1); margin-bottom: 30px;">
+    <h2 style="color: #333; border-bottom: 3px solid #667eea; padding-bottom: 10px;">なぜ私は${keyword}の中でこれを選んだのか？</h2>
+    <p style="line-height: 1.8; font-size: 16px; margin-top: 20px;">
+      <!-- ここに感情的な導入文を生成 -->
+    </p>
+  </div>
+
+  <!-- ビフォーアフター -->
+  <div style="margin-bottom: 30px;">
+    <h2 style="text-align: center; color: #333; margin-bottom: 25px;">使用前後の変化</h2>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+      <div style="background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%); padding: 25px; border-radius: 15px;">
+        <h3 style="color: #333; margin-top: 0;">😰 Before</h3>
+        <ul style="line-height: 1.8;">
+          <!-- ビフォーの悩みを生成 -->
+        </ul>
+      </div>
+      <div style="background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); padding: 25px; border-radius: 15px;">
+        <h3 style="color: #333; margin-top: 0;">😊 After</h3>
+        <ul style="line-height: 1.8;">
+          <!-- アフターの改善を生成 -->
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- 商品詳細 -->
+  <div style="background: white; padding: 30px; border-radius: 15px; box-shadow: 0 3px 15px rgba(0,0,0,0.1); margin-bottom: 30px;">
+    <h2 style="color: #333; border-bottom: 3px solid #667eea; padding-bottom: 10px;">商品の詳細スペック</h2>
+    <div style="display: flex; gap: 30px; margin-top: 25px;">
+      <div style="flex: 0 0 350px;">
+        <img src="${imageUrl || 'https://placehold.jp/30/cccccc/ffffff/350x350.png?text=No+Image'}" alt="${title}" style="width: 100%; border-radius: 10px; box-shadow: 0 3px 10px rgba(0,0,0,0.1);">
+      </div>
+      <div style="flex: 1;">
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr style="border-bottom: 1px solid #eee;">
+            <td style="padding: 15px; background: #f8f9fa; font-weight: bold; width: 120px;">商品名</td>
+            <td style="padding: 15px;">${title}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #eee;">
+            <td style="padding: 15px; background: #f8f9fa; font-weight: bold;">価格</td>
+            <td style="padding: 15px; font-size: 20px; color: #e91e63; font-weight: bold;">${priceFormatted}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #eee;">
+            <td style="padding: 15px; background: #f8f9fa; font-weight: bold;">評価</td>
+            <td style="padding: 15px;"><span style="color: #ffd700; font-size: 18px;">${ratingStars}</span> ${rating}/5.0</td>
+          </tr>
+          ${maker ? `<tr style="border-bottom: 1px solid #eee;">
+            <td style="padding: 15px; background: #f8f9fa; font-weight: bold;">メーカー</td>
+            <td style="padding: 15px;">${maker}</td>
+          </tr>` : ''}
+        </table>
+        <a href="${affiliateUrl}" target="_blank" rel="noopener noreferrer sponsored" style="display: block; margin-top: 25px; padding: 15px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; text-align: center; text-decoration: none; border-radius: 10px; font-weight: bold; font-size: 18px;">
+          詳細を確認して購入する →
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3つの口コミ -->
+  <div style="background: #f8f9fa; padding: 30px; border-radius: 15px; margin-bottom: 30px;">
+    <h2 style="color: #333; text-align: center; margin-bottom: 25px;">実際の購入者の声</h2>
+    <!-- 3つ以上の口コミを生成 -->
+  </div>
+
+  <!-- 比較表 -->
+  <div style="background: white; padding: 30px; border-radius: 15px; box-shadow: 0 3px 15px rgba(0,0,0,0.1); margin-bottom: 30px;">
+    <h2 style="color: #333; border-bottom: 3px solid #667eea; padding-bottom: 10px;">他商品との比較</h2>
+    <!-- 比較表を生成 -->
+  </div>
+
+  <!-- FAQ -->
+  <div style="background: white; padding: 30px; border-radius: 15px; box-shadow: 0 3px 15px rgba(0,0,0,0.1); margin-bottom: 30px;">
+    <h2 style="color: #333; border-bottom: 3px solid #667eea; padding-bottom: 10px;">よくある質問</h2>
+    <!-- 5個以上のFAQを生成 -->
+  </div>
+
+  <!-- 最終CTA -->
+  <div style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); padding: 40px; border-radius: 20px; text-align: center;">
+    <h2 style="color: white; font-size: 28px; margin-bottom: 15px;">今が購入のチャンス！</h2>
+    <p style="color: white; font-size: 18px; margin-bottom: 25px;">在庫残りわずか・キャンペーンは今日まで</p>
+    <a href="${affiliateUrl}" target="_blank" rel="noopener noreferrer sponsored" style="display: inline-block; padding: 20px 60px; background: white; color: #fa709a; text-decoration: none; border-radius: 50px; font-weight: bold; font-size: 22px; box-shadow: 0 5px 20px rgba(0,0,0,0.2);">
+      最安値で購入する →
+    </a>
+  </div>
+
+</div>`
+        }
+      ],
+      temperature: 0.8,
+      max_tokens: 4000
+    });
+
+    const generatedContent = completion.choices[0]?.message?.content || '';
+    
+    // タイトル最適化
+    const optimizedTitle = `【${reviewCount}人が購入】${title.substring(0, 40)}...の詳細レビュー｜${keyword}`;
+    
+    return {
+      title: optimizedTitle,
+      content: generatedContent,
+      category: 'レビュー',
+      tags: [keyword, 'レビュー', '口コミ', '評判', '最安値', '比較', `${new Date().getFullYear()}年`],
+      status: 'draft',
+      isProductReview: true
+    };
     
   } catch (error) {
     console.error('❌ Error in generateProductReview:', error);
