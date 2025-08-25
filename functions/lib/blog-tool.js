@@ -278,48 +278,102 @@ async postToWordPress(article) {
       });
     }
     
-    // 記事データの準備
-    const postData = {
-      post_type: 'post',
-      post_status: postStatus,  // 条件によって'draft'または'publish'
-      post_title: article.title || 'タイトルなし',
-      post_content: article.content || '<p>コンテンツなし</p>',
-      post_category: [1],
-      post_format: 'standard',
-      comment_status: 'open',
-      ping_status: 'open'
+    // タイトルと本文のサニタイズ（XML特殊文字対策）
+    const sanitizeForXML = (str) => {
+      return (str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;')
+        .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, ''); // 制御文字を除去
     };
     
-    // タグがある場合
-    if (article.tags && article.tags.length > 0) {
-      postData.mt_keywords = article.tags.join(', ');
-    }
+    // タイトルの処理（長さ制限も追加）
+    const processedTitle = sanitizeForXML(article.title || 'タイトルなし').substring(0, 150);
+    const processedContent = sanitizeForXML(article.content || '<p>コンテンツなし</p>');
     
-    console.log(`Creating ${postStatus} post with title:`, postData.post_title);
+    console.log(`Creating ${postStatus} post with title:`, processedTitle.substring(0, 50) + '...');
+    
+    // metaWeblog.newPost用のデータ構造（よりシンプル）
+    const blogContent = {
+      title: processedTitle,
+      description: processedContent,
+      mt_keywords: article.tags?.join(', ') || '',
+      post_status: postStatus,
+      categories: ['Uncategorized']
+    };
     
     return new Promise((resolve) => {
+      // metaWeblog.newPostを使用（wp.newPostよりも互換性が高い）
       this.client.methodCall(
-        'wp.newPost',
+        'metaWeblog.newPost',
         [
-          0, // blog_id
+          '1', // blog_id（文字列として）
           this.wordpressUsername,
           this.wordpressPassword,
-          postData
+          blogContent,
+          postStatus === 'publish' // publishフラグ
         ],
         (error, value) => {
           if (error) {
             console.error('XML-RPC Error:', error);
-            resolve({
-              success: false,
-              error: error.message || 'XML-RPC error',
-              message: `${postStatus}投稿に失敗しました`
-            });
+            
+            // エラー時のフォールバック：wp.newPostを試す
+            console.log('Trying wp.newPost as fallback...');
+            
+            const wpPostData = {
+              post_type: 'post',
+              post_status: postStatus,
+              post_title: processedTitle,
+              post_content: processedContent,
+              post_category: [1],
+              post_format: 'standard',
+              comment_status: 'open',
+              ping_status: 'open'
+            };
+            
+            if (article.tags && article.tags.length > 0) {
+              wpPostData.mt_keywords = article.tags.join(', ');
+            }
+            
+            this.client.methodCall(
+              'wp.newPost',
+              [
+                0,
+                this.wordpressUsername,
+                this.wordpressPassword,
+                wpPostData
+              ],
+              (error2, value2) => {
+                if (error2) {
+                  console.error('wp.newPost also failed:', error2);
+                  resolve({
+                    success: false,
+                    error: 'Both XML-RPC methods failed',
+                    message: `${postStatus}投稿に失敗しました`
+                  });
+                } else {
+                  console.log(`✅ ${postStatus === 'draft' ? 'Draft' : 'Post'} created via wp.newPost with ID:`, value2);
+                  
+                  const postUrl = isProductReview
+                    ? `${this.wordpressUrl}/wp-admin/post.php?post=${value2}&action=edit`
+                    : `${this.wordpressUrl}/?p=${value2}`;
+                  
+                  resolve({
+                    success: true,
+                    postId: value2,
+                    url: postUrl,
+                    status: postStatus,
+                    message: isProductReview 
+                      ? '下書きとして保存されました。管理画面で確認してください。'
+                      : '記事が公開されました。'
+                  });
+                }
+              }
+            );
           } else {
             console.log(`✅ ${postStatus === 'draft' ? 'Draft' : 'Post'} created with ID:`, value);
-            
-            const successMessage = isProductReview 
-              ? '下書きとして保存されました。管理画面で確認してください。'
-              : '記事が公開されました。';
             
             const postUrl = isProductReview
               ? `${this.wordpressUrl}/wp-admin/post.php?post=${value}&action=edit`
@@ -330,7 +384,9 @@ async postToWordPress(article) {
               postId: value,
               url: postUrl,
               status: postStatus,
-              message: successMessage
+              message: isProductReview 
+                ? '下書きとして保存されました。管理画面で確認してください。'
+                : '記事が公開されました。'
             });
           }
         }
@@ -451,6 +507,19 @@ ${categoryData.topic}について、最新の情報をまとめた魅力的な�
   // generateProductReview関数の修正（記事に商品レビューフラグを追加）
 async generateProductReview(productData, keyword, options = {}) {
   try {
+    // アダルトコンテンツのチェック
+    const adultKeywords = ['18禁', 'アダルト', 'R18'];
+    const containsAdultContent = adultKeywords.some(word => 
+      productData.title?.includes(word) || 
+      productData.description?.includes(word)
+    );
+    
+    if (containsAdultContent) {
+      console.log('⚠️ Adult content detected - creating family-friendly version');
+      // タイトルを適切に処理
+      productData.title = '商品レビュー';
+      productData.description = '詳細はリンク先をご確認ください';
+    }
     console.log('🎯 Generating product review article...');
     console.log('Product data received:', JSON.stringify(productData, null, 2));
     
