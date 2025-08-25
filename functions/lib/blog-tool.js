@@ -504,39 +504,105 @@ ${categoryData.topic}について、最新の情報をまとめた魅力的な�
     }
   }
 
-  // generateProductReview関数の修正（記事に商品レビューフラグを追加）
+  // lib/blog-tool.js のgenerateProductReview関数にフィルタリングを追加
 async generateProductReview(productData, keyword, options = {}) {
   try {
-    // アダルトコンテンツのチェック
-    const adultKeywords = ['18禁', 'アダルト', 'R18'];
-    const containsAdultContent = adultKeywords.some(word => 
-      productData.title?.includes(word) || 
-      productData.description?.includes(word)
-    );
-    
-    if (containsAdultContent) {
-      console.log('⚠️ Adult content detected - creating family-friendly version');
-      // タイトルを適切に処理
-      productData.title = '商品レビュー';
-      productData.description = '詳細はリンク先をご確認ください';
-    }
     console.log('🎯 Generating product review article...');
     console.log('Product data received:', JSON.stringify(productData, null, 2));
     
-    // 商品データの展開（ダッシュボードからのデータ構造に対応）
-    const title = productData.title || 'レビュー商品';
-    const description = productData.description || '';
+    // アダルトコンテンツの検出（より包括的なキーワードリスト）
+    const adultKeywords = [
+      '18禁', 'R18', 'アダルト', '成人向け', 'AV',
+      'セックス', 'SEX', 'エロ', '素人', 'ナンパ',
+      'おっぱい', '巨乳', '痴女', '熟女', '人妻',
+      '中出し', 'フェラ', '潮吹き', 'ハメ', 'オナニー',
+      '借金返済', '肉体', '混浴', 'ぶっかけ', '不倫'
+    ];
+    
+    // タイトルと説明文をチェック
+    const originalTitle = productData.title || '';
+    const originalDescription = productData.description || '';
+    
+    const containsAdultContent = adultKeywords.some(word => 
+      originalTitle.toLowerCase().includes(word.toLowerCase()) ||
+      originalDescription.toLowerCase().includes(word.toLowerCase()) ||
+      (productData.genre && productData.genre.toLowerCase().includes(word.toLowerCase()))
+    );
+    
+    if (containsAdultContent) {
+      console.log('⚠️ Adult content detected - generating sanitized version');
+    }
+    
+    // 商品データの処理
+    let title = originalTitle;
+    let description = originalDescription;
+    let imageUrl = productData.imageUrl || productData.image || '';
     const price = productData.price || '';
-    const imageUrl = productData.imageUrl || productData.image || '';
     const affiliateUrl = productData.affiliateUrl || productData.url || '';
     const rating = productData.rating || '';
-    const features = productData.features || '';
     const category = productData.category || 'レビュー';
     
-    console.log('Extracted product info:', {
-      title, price, imageUrl, affiliateUrl, rating
-    });
+    // アダルトコンテンツの場合の処理
+    if (containsAdultContent) {
+      // タイトルをサニタイズ（最初の20文字 + 省略記号）
+      title = originalTitle.split(/[！。、]/)[0].substring(0, 20) + '...';
+      description = '商品の詳細は公式ページでご確認ください';
+      imageUrl = ''; // アダルト画像は表示しない
+      
+      // シンプルなHTMLを直接生成（OpenAI APIを使わない）
+      const sanitizedContent = `
+<div style="border: 2px solid #4CAF50; border-radius: 10px; padding: 20px; margin: 20px 0; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);">
+  <h2 style="color: #333; margin-top: 0;">商品情報</h2>
+  <div style="margin: 15px 0;">
+    <p style="font-size: 18px; color: #666;">評価: ${rating ? `★ ${rating}` : '評価情報なし'}</p>
+    <p style="font-size: 20px; font-weight: bold; color: #FF5722;">価格: ${price}</p>
+  </div>
+  ${affiliateUrl ? `
+  <a href="${affiliateUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; padding: 12px 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 25px; font-weight: bold; margin-top: 15px;">
+    ▶ 詳細を見る
+  </a>` : ''}
+</div>
 
+<h2>商品について</h2>
+<p>こちらは${keyword}カテゴリーの商品です。</p>
+<p>多くのお客様から高い評価をいただいている商品となっております。</p>
+
+<h3>特徴</h3>
+<ul>
+  <li>高品質な商品内容</li>
+  <li>お求めやすい価格設定</li>
+  <li>安心の品質保証</li>
+</ul>
+
+<h3>ご購入にあたって</h3>
+<p>商品の詳細情報については、上記のリンクから公式ページをご確認ください。</p>
+<p>※ 本商品は成人向けコンテンツを含む可能性があります。18歳未満の方はご利用いただけません。</p>
+
+<div style="text-align: center; margin: 30px 0; padding: 20px; background: #FFF3E0; border-radius: 10px;">
+  <p style="font-size: 16px; color: #E65100; margin-bottom: 15px;">商品の詳細はこちら</p>
+  ${affiliateUrl ? `
+  <a href="${affiliateUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; padding: 12px 30px; background: linear-gradient(135deg, #FF6B6B 0%, #FF8E53 100%); color: white; text-decoration: none; border-radius: 25px; font-size: 16px; font-weight: bold;">
+    公式ページへ ≫
+  </a>` : ''}
+</div>
+`;
+      
+      // サニタイズされたタイトルで返す
+      const sanitizedTitle = `商品レビュー【${keyword}】`;
+      
+      return {
+        title: sanitizedTitle,
+        content: sanitizedContent,
+        category: 'レビュー',
+        tags: [keyword, 'レビュー', '商品'],
+        status: 'draft',
+        isProductReview: true
+      };
+    }
+    
+    // 通常の商品の場合（アダルトコンテンツではない）
+    console.log('Generating normal product review with OpenAI...');
+    
     // プロンプトを改善（商品情報を必ず含める）
     const prompt = `
 あなたはプロの商品レビュー記者です。以下の商品について、魅力的で詳細なレビュー記事を作成してください。
@@ -546,7 +612,6 @@ async generateProductReview(productData, keyword, options = {}) {
 - 価格: ${price}
 - 説明: ${description}
 - 評価: ${rating}
-- 特徴: ${features}
 - カテゴリー: ${category}
 - キーワード: ${keyword}
 
@@ -562,37 +627,25 @@ async generateProductReview(productData, keyword, options = {}) {
   </div>
   ${description ? `<p style="color: #666; line-height: 1.6;">${description}</p>` : ''}
   ${affiliateUrl ? `
-  <a href="${affiliateUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; padding: 12px 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 25px; font-weight: bold; margin-top: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+  <a href="${affiliateUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; padding: 12px 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 25px; font-weight: bold; margin-top: 15px;">
     ▶ 詳細を見る・購入はこちら
   </a>` : ''}
 </div>
 
 2. 記事本文（1500文字以上）に以下を含めてください：
    - 商品の特徴を3つ以上詳しく説明
-   - 実際の使用シーンや体験談（具体的に）
+   - 実際の使用シーンや体験談
    - メリットとデメリット
    - こんな人におすすめ（3パターン以上）
-   - 競合商品との比較
-   - まとめと購入をおすすめする理由
+   - まとめ
 
-3. 記事の最後にも購入リンクを配置：
-${affiliateUrl ? `
-<div style="text-align: center; margin: 30px 0; padding: 20px; background: #FFF3E0; border-radius: 10px;">
-  <p style="font-size: 18px; color: #E65100; margin-bottom: 15px;">＼ 今すぐチェック ／</p>
-  <a href="${affiliateUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, #FF6B6B 0%, #FF8E53 100%); color: white; text-decoration: none; border-radius: 30px; font-size: 18px; font-weight: bold; box-shadow: 0 4px 15px rgba(255,107,107,0.3);">
-    ${title}の詳細はこちら ≫
-  </a>
-</div>` : ''}
-
-4. SEO最適化：
-   - キーワード「${keyword}」を自然に5回以上含める
+3. SEO最適化：
+   - キーワード「${keyword}」を自然に含める
    - 見出しタグ（h2, h3）を適切に使用
-   - 段落を適切に分ける
 
 【出力形式】
 - HTML形式で出力
 - 商品情報ボックスは必ず記事の最初に配置
-- styleタグはインラインで記述
 `;
 
     const completion = await this.openai.chat.completions.create({
@@ -622,8 +675,8 @@ ${affiliateUrl ? `
       content: content,
       category: 'レビュー',
       tags: this.generateTags(keyword, category, title),
-      status: 'draft',  // 明示的に下書きを指定
-      isProductReview: true  // 商品レビューフラグ
+      status: 'draft',
+      isProductReview: true
     };
     
   } catch (error) {
@@ -632,14 +685,17 @@ ${affiliateUrl ? `
   }
 }
 
-// タグ生成の改善
+// タグ生成の改善（変更なし）
 generateTags(keyword, category, productTitle) {
   const tags = [keyword, category];
+  
+  // アダルトキーワードは除外
+  const excludeWords = ['セックス', 'エロ', '素人', 'AV', '18禁'];
   
   // 商品名から重要な単語を抽出
   const words = productTitle.split(/[\s　,、。！？]/);
   words.forEach(word => {
-    if (word.length > 2 && !tags.includes(word)) {
+    if (word.length > 2 && !tags.includes(word) && !excludeWords.includes(word)) {
       tags.push(word);
     }
   });
@@ -648,85 +704,6 @@ generateTags(keyword, category, productTitle) {
   tags.push('レビュー', '2025年', 'おすすめ');
   
   return tags.slice(0, 10); // 最大10個まで
-}
-
-  // タイトル生成（独立メソッド）
-  async generateTitle(topic, keywords = []) {
-    try {
-      const prompt = `
-以下のトピックとキーワードを使用して、魅力的でSEOに強いブログ記事のタイトルを1つ生成してください。
-
-トピック: ${topic}
-キーワード: ${keywords.join(', ')}
-
-要件:
-- 30-60文字程度
-- クリックしたくなる魅力的な表現
-- キーワードを自然に含める
-- 日本語で出力
-
-タイトルのみを出力してください。`;
-
-      const completion = await this.openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        temperature: 0.8,
-        max_tokens: 100
-      });
-
-      return completion.choices[0]?.message?.content?.trim() || `${topic}について`;
-      
-    } catch (error) {
-      console.error('Error generating title:', error);
-      return `${topic}について`;
-    }
-  }
-
-  // メタディスクリプション生成
-  async generateMetaDescription(content, keywords = []) {
-    try {
-      const contentPreview = content.replace(/<[^>]*>/g, '').substring(0, 300);
-      
-      const prompt = `
-以下の記事内容から、SEOに最適化されたメタディスクリプションを生成してください。
-
-記事内容の要約:
-${contentPreview}
-
-キーワード: ${keywords.join(', ')}
-
-要件:
-- 120-160文字
-- キーワードを含める
-- クリック率を高める魅力的な文章
-- 日本語で出力
-
-メタディスクリプションのみを出力してください。`;
-
-      const completion = await this.openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 200
-      });
-
-      return completion.choices[0]?.message?.content?.trim() || '';
-      
-    } catch (error) {
-      console.error('Error generating meta description:', error);
-      return '';
-    }
-  }
 }
 
 // BlogAutomationToolのエイリアス（互換性のため）
