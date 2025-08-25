@@ -253,124 +253,95 @@ class BlogTool {
   }
   */
 
-  // postToWordPress関数を直接XML-RPC版に置き換え
+  // lib/blog-tool.js のpostToWordPress関数を条件分岐版に修正
 async postToWordPress(article) {
   try {
-    console.log('📤 Posting to WordPress via direct XML-RPC...');
+    // 商品レビュー記事かどうかを判定（カテゴリーやタグで判断）
+    const isProductReview = article.category === 'レビュー' || 
+                           article.tags?.includes('レビュー') ||
+                           article.isProductReview === true;
     
-    const fetch = require('node-fetch');
+    // 投稿ステータスを決定
+    const postStatus = isProductReview ? 'draft' : 'publish';
     
-    // 記事データを取得
-    const title = article.title || 'タイトルなし';
-    const content = article.content || '<p>コンテンツなし</p>';
-    const category = article.category || 'uncategorized';
-    const tags = article.tags || [];
-    const status = article.status || 'publish';
+    console.log(`📤 Posting to WordPress as ${postStatus.toUpperCase()} via XML-RPC...`);
+    console.log('Article type:', isProductReview ? 'Product Review' : 'Regular Post');
     
-    console.log('Post details:', {
-      title: title,
-      contentLength: content?.length,
-      category: category
-    });
-    
-    // XMLをエスケープ
-    const escapeXml = (str) => {
-      if (!str) return '';
-      return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&apos;');
-    };
-    
-    // タイトルとコンテンツを処理
-    const processedTitle = this.optimizeTitle(title, category);
-    const cleanContent = this.sanitizeContent(content);
-    
-    // XML-RPCリクエストを構築
-    const xmlRequest = `<?xml version="1.0" encoding="UTF-8"?>
-<methodCall>
-  <methodName>wp.newPost</methodName>
-  <params>
-    <param><value><int>1</int></value></param>
-    <param><value><string>${escapeXml(this.wordpressUsername)}</string></value></param>
-    <param><value><string>${escapeXml(this.wordpressPassword)}</string></value></param>
-    <param>
-      <value>
-        <struct>
-          <member>
-            <name>post_type</name>
-            <value><string>post</string></value>
-          </member>
-          <member>
-            <name>post_status</name>
-            <value><string>${status}</string></value>
-          </member>
-          <member>
-            <name>post_title</name>
-            <value><string>${escapeXml(processedTitle)}</string></value>
-          </member>
-          <member>
-            <name>post_content</name>
-            <value><string>${escapeXml(cleanContent)}</string></value>
-          </member>
-          <member>
-            <name>post_author</name>
-            <value><int>1</int></value>
-          </member>
-          <member>
-            <name>comment_status</name>
-            <value><string>open</string></value>
-          </member>
-        </struct>
-      </value>
-    </param>
-  </params>
-</methodCall>`;
-
-    console.log('Sending request to:', this.wordpressUrl + '/xmlrpc.php');
-    
-    const response = await fetch(this.wordpressUrl + '/xmlrpc.php', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'text/xml; charset=UTF-8',
-        'Accept': 'text/xml'
-      },
-      body: xmlRequest
-    });
-    
-    const responseText = await response.text();
-    console.log('WordPress response:', responseText.substring(0, 200));
-    
-    // postIdを抽出
-    const postIdMatch = responseText.match(/<string>(\d+)<\/string>/);
-    
-    if (postIdMatch) {
-      const postId = postIdMatch[1];
-      console.log('✅ WordPress post created with ID:', postId);
-      
-      return {
-        success: true,
-        postId: postId,
-        url: `${this.wordpressUrl}/?p=${postId}`,
-        message: 'Post created successfully'
-      };
-    } else {
-      // エラーをチェック
-      const faultMatch = responseText.match(/<faultString>(.*?)<\/faultString>/s);
-      if (faultMatch) {
-        throw new Error('XML-RPC Fault: ' + faultMatch[1]);
-      }
-      throw new Error('Unexpected response from WordPress');
+    // XML-RPCクライアントの確認
+    if (!this.client) {
+      const url = new URL(this.wordpressUrl);
+      this.client = xmlrpc.createClient({
+        host: url.hostname,
+        port: url.port || 443,
+        path: '/xmlrpc.php',
+        secure: url.protocol === 'https:'
+      });
     }
     
+    // 記事データの準備
+    const postData = {
+      post_type: 'post',
+      post_status: postStatus,  // 条件によって'draft'または'publish'
+      post_title: article.title || 'タイトルなし',
+      post_content: article.content || '<p>コンテンツなし</p>',
+      post_category: [1],
+      post_format: 'standard',
+      comment_status: 'open',
+      ping_status: 'open'
+    };
+    
+    // タグがある場合
+    if (article.tags && article.tags.length > 0) {
+      postData.mt_keywords = article.tags.join(', ');
+    }
+    
+    console.log(`Creating ${postStatus} post with title:`, postData.post_title);
+    
+    return new Promise((resolve) => {
+      this.client.methodCall(
+        'wp.newPost',
+        [
+          0, // blog_id
+          this.wordpressUsername,
+          this.wordpressPassword,
+          postData
+        ],
+        (error, value) => {
+          if (error) {
+            console.error('XML-RPC Error:', error);
+            resolve({
+              success: false,
+              error: error.message || 'XML-RPC error',
+              message: `${postStatus}投稿に失敗しました`
+            });
+          } else {
+            console.log(`✅ ${postStatus === 'draft' ? 'Draft' : 'Post'} created with ID:`, value);
+            
+            const successMessage = isProductReview 
+              ? '下書きとして保存されました。管理画面で確認してください。'
+              : '記事が公開されました。';
+            
+            const postUrl = isProductReview
+              ? `${this.wordpressUrl}/wp-admin/post.php?post=${value}&action=edit`
+              : `${this.wordpressUrl}/?p=${value}`;
+            
+            resolve({
+              success: true,
+              postId: value,
+              url: postUrl,
+              status: postStatus,
+              message: successMessage
+            });
+          }
+        }
+      );
+    });
+    
   } catch (error) {
-    console.error('❌ Error posting to WordPress:', error);
+    console.error('❌ Exception in postToWordPress:', error);
     return {
       success: false,
-      error: error.message,
-      message: 'Failed to create post'
+      error: error.message || 'Unknown error'
     };
   }
 }
@@ -477,7 +448,7 @@ ${categoryData.topic}について、最新の情報をまとめた魅力的な�
     }
   }
 
-  // lib/blog-tool.js のgenerateProductReview関数を以下に完全置き換え
+  // generateProductReview関数の修正（記事に商品レビューフラグを追加）
 async generateProductReview(productData, keyword, options = {}) {
   try {
     console.log('🎯 Generating product review article...');
@@ -580,9 +551,10 @@ ${affiliateUrl ? `
     return {
       title: optimizedTitle,
       content: content,
-      category: category,
+      category: 'レビュー',
       tags: this.generateTags(keyword, category, title),
-      status: 'publish'
+      status: 'draft',  // 明示的に下書きを指定
+      isProductReview: true  // 商品レビューフラグ
     };
     
   } catch (error) {
