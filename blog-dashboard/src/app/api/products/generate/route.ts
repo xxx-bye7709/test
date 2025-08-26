@@ -80,6 +80,41 @@ ${normalizedProducts.map((p: any, i: number) => `
     });
 
     const aiData = await openAIResponse.json();
+    
+    // OpenAI APIのエラーチェック
+    if (!aiData.choices || aiData.choices.length === 0) {
+      console.error('OpenAI API error:', aiData);
+      
+      // エラーの場合、シンプルな記事を生成
+      const fallbackContent = `
+<h2>【${keyword}】おすすめ商品${products.length}選</h2>
+
+${normalizedProducts.map((p: any, i: number) => `
+<div style="margin: 30px 0; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
+  <h3>${i + 1}. ${p.title}</h3>
+  <p><strong>価格:</strong> ${p.price}</p>
+  ${p.description ? `<p>${p.description}</p>` : ''}
+  <div style="text-align: center; margin: 20px 0;">
+    <a href="${p.affiliateUrl}" target="_blank" rel="noopener noreferrer sponsored" 
+       style="display: inline-block; padding: 15px 40px; background: #ff6b6b; 
+              color: white; text-decoration: none; border-radius: 30px; font-weight: bold;">
+      詳細を見る ≫
+    </a>
+  </div>
+</div>
+`).join('')}
+      `;
+      
+      return NextResponse.json({
+        success: true,
+        content: fallbackContent,
+        title: `【${keyword}】おすすめ${normalizedProducts.length}選`,
+        products: normalizedProducts,
+        preview: true,
+        fallback: true
+      });
+    }
+    
     let content = aiData.choices[0].message.content;
 
     // コンテンツのクリーンアップ
