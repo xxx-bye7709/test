@@ -1,5 +1,4 @@
-// src/app/api/products/search/route.ts を修正
-// 大文字のKを試す
+// src/app/api/products/search/route.ts
 
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -11,46 +10,26 @@ export async function GET(req: NextRequest) {
 
     console.log('Searching products with query:', query);
 
-    // simpleDMMTest関数を使用（デバッグ用）
+    // GETリクエストでクエリパラメータとして送信
+    const params = new URLSearchParams({
+      keyword: query,
+      limit: limit,
+      page: '1'
+    });
+    
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_FIREBASE_FUNCTIONS_URL}/simpleDMMTest`,
+      `${process.env.NEXT_PUBLIC_FIREBASE_FUNCTIONS_URL}/searchProductsForDashboard?${params}`,
       {
-        method: 'POST',
+        method: 'GET',  // GETメソッドに変更
         headers: {
           'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          Keyword: query,  // 大文字のK
-          limit: parseInt(limit)
-        })
+        }
       }
     );
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error('Search API error:', errorText);
-      
-      // simpleDMMTestも失敗したら、GETメソッドを試す
-      const getResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_FIREBASE_FUNCTIONS_URL}/searchProducts?keyword=${encodeURIComponent(query)}&limit=${limit}`,
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-      
-      if (getResponse.ok) {
-        const data = await getResponse.json();
-        const products = data.products || [];
-        return NextResponse.json({
-          success: true,
-          products: products,
-          total: products.length
-        });
-      }
-      
       throw new Error(`Search failed: ${response.statusText}`);
     }
 
@@ -67,7 +46,8 @@ export async function GET(req: NextRequest) {
         large: product.imageURL?.large || '',
         small: product.imageURL?.small || ''
       },
-      description: product.iteminfo?.series?.[0]?.name || '',
+      description: product.iteminfo?.series?.[0]?.name || 
+                  product.iteminfo?.genre?.[0]?.name || '',
       rating: product.review?.average || '4.5',
       maker: product.iteminfo?.maker?.[0]?.name || ''
     })) || [];
