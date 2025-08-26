@@ -1,6 +1,4 @@
-// blog-dashboard/src/app/api/products/generate/route.ts
-// 完全修正版 - アフィリエイトリンク、画像、フォーマット問題解決
-
+// 完全修正版 - フォールバック付き
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
@@ -10,244 +8,120 @@ export async function POST(req: NextRequest) {
 
     console.log('Generating article for products:', products);
 
-    // 商品データの正規化と検証
-    const normalizedProducts = products.map((product: any) => {
-      // アフィリエイトリンクの正しい取得
-      const affiliateUrl = product.affiliateURL || 
-                          product.affiliateUrl || 
-                          product.URL || 
-                          product.url || 
-                          '';
+    // 商品データの正規化
+    const normalizedProducts = products.map((product: any) => ({
+      title: product.title || '',
+      price: product.price || '',
+      affiliateUrl: product.affiliateURL || product.affiliateUrl || '',
+      imageUrl: product.imageURL?.large || product.imageURL?.small || '',
+      description: product.description || '',
+      rating: product.rating || '4.5'
+    }));
 
-      // 画像URLの正しい取得
-      const imageUrl = product.imageURL?.large || 
-                      product.imageURL?.small || 
-                      product.image || 
-                      product.imageUrl || 
-                      '';
-
-      return {
-        title: product.title || '',
-        price: product.price || product.prices?.price || '',
-        affiliateUrl: affiliateUrl,
-        imageUrl: imageUrl,
-        description: product.iteminfo?.series?.[0]?.name || 
-                    product.iteminfo?.genre?.[0]?.name || 
-                    product.description || '',
-        rating: product.review?.average || '4.5',
-        maker: product.iteminfo?.maker?.[0]?.name || ''
-      };
-    });
-
-    // OpenAI APIで記事生成
-    const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [{
-          role: 'user',
-          content: `
-以下の商品について、アフィリエイト記事を作成してください。
-
-商品情報：
-${normalizedProducts.map((p: any, i: number) => `
-商品${i + 1}:
-- 商品名: ${p.title}
-- 価格: ${p.price}
-- 説明: ${p.description}
-- 評価: ${p.rating}
-`).join('\n')}
-
-要件：
-1. HTMLタグを使用（h2, p, ul, liなど）
-2. 商品ごとにアフィリエイトリンクボタンを配置
-3. 3000文字以上
-4. SEOを意識した構成
-5. 購買意欲を高める内容
-
-重要：
-- コードブロック記号（\`\`\`）は使用しない
-- HTMLタグは直接記述する
-- 不要な改行は避ける`
-        }],
-        temperature: 0.7,
-        max_tokens: 4000
-      })
-    });
-
-    const aiData = await openAIResponse.json();
+    // OpenAI API呼び出し（エラーハンドリング付き）
+    let content = '';
+    let useOpenAI = true;
     
-    // OpenAI APIのエラーチェック
-    if (!aiData.choices || aiData.choices.length === 0) {
-      console.error('OpenAI API error:', aiData);
-      
-      // エラーの場合、シンプルな記事を生成
-      const fallbackContent = `
-<h2>【${keyword}】おすすめ商品${products.length}選</h2>
-
-${normalizedProducts.map((p: any, i: number) => `
-<div style="margin: 30px 0; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
-  <h3>${i + 1}. ${p.title}</h3>
-  <p><strong>価格:</strong> ${p.price}</p>
-  ${p.description ? `<p>${p.description}</p>` : ''}
-  <div style="text-align: center; margin: 20px 0;">
-    <a href="${p.affiliateUrl}" target="_blank" rel="noopener noreferrer sponsored" 
-       style="display: inline-block; padding: 15px 40px; background: #ff6b6b; 
-              color: white; text-decoration: none; border-radius: 30px; font-weight: bold;">
-      詳細を見る ≫
-    </a>
-  </div>
-</div>
-`).join('')}
-      `;
-      
-      return NextResponse.json({
-        success: true,
-        content: fallbackContent,
-        title: `【${keyword}】おすすめ${normalizedProducts.length}選`,
-        products: normalizedProducts,
-        preview: true,
-        fallback: true
-      });
-    }
-    
-    let content = aiData.choices[0].message.content;
-
-    // コンテンツのクリーンアップ
-    content = content
-      .replace(/```html/g, '')
-      .replace(/```/g, '')
-      .replace(/^\s+/gm, '') // 各行の先頭の空白を削除
-      .replace(/\n{3,}/g, '\n\n') // 3つ以上の改行を2つに
-      .trim();
-
-    // 各商品のアフィリエイトリンクと画像を挿入
-    normalizedProducts.forEach((product: any, index: number) => {
-      // アフィリエイトリンクボタンの生成
-      if (product.affiliateUrl) {
-        const linkButton = `
-<div style="text-align: center; margin: 30px 0;">
-  <a href="${product.affiliateUrl}" target="_blank" rel="noopener noreferrer sponsored" 
-     style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%); 
-            color: white; text-decoration: none; border-radius: 30px; font-weight: bold; font-size: 18px; 
-            box-shadow: 0 4px 15px rgba(255,107,107,0.4);">
-    ${product.title}を購入する ≫
-  </a>
-</div>`;
-        
-        // 商品名の後にボタンを挿入
-        const productPattern = new RegExp(`(${product.title.substring(0, 20)}[^<]*)`, 'i');
-        content = content.replace(productPattern, `$1${linkButton}`);
-      }
-
-      // 画像の挿入
-      if (product.imageUrl) {
-        const imageTag = `
-<div style="text-align: center; margin: 20px 0;">
-  <img src="${product.imageUrl}" alt="${product.title}" 
-       style="max-width: 100%; height: auto; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
-</div>`;
-        
-        // 最初の商品紹介部分に画像を挿入
-        if (index === 0) {
-          const h2Pattern = /<h2[^>]*>([^<]*)<\/h2>/;
-          content = content.replace(h2Pattern, `$&${imageTag}`);
-        }
-      }
-    });
-
-    // タイトルの生成
-    const title = `【${keyword}】おすすめ${normalizedProducts.length}選！${new Date().getFullYear()}年最新版`;
-
-    // WordPress投稿データの準備
-    const postData = {
-      title: title,
-      content: content,
-      status: autoPost ? 'publish' : 'draft',
-      categories: [1], // カテゴリID（必要に応じて変更）
-      tags: [keyword, 'レビュー', '比較', 'おすすめ', `${new Date().getFullYear()}年`],
-      featured_media: null, // アイキャッチ画像（別途処理が必要）
-      meta: {
-        description: `${keyword}の人気商品${normalizedProducts.length}選を徹底比較。価格、評価、特徴を詳しく解説します。`,
-        keywords: `${keyword},レビュー,比較,おすすめ,${normalizedProducts.map((p: any) => p.title.substring(0, 20)).join(',')}`
-      }
-    };
-
-    // WordPress投稿処理
-    if (autoPost) {
-      const wpResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_WORDPRESS_URL}/wp-json/wp/v2/posts`,
-        {
+    if (process.env.OPENAI_API_KEY) {
+      try {
+        const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Basic ${Buffer.from(
-              `${process.env.NEXT_PUBLIC_WORDPRESS_USERNAME}:${process.env.WORDPRESS_PASSWORD}`
-            ).toString('base64')}`
+            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
           },
-          body: JSON.stringify(postData)
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: [{
+              role: 'user',
+              content: `商品レビュー記事を作成。HTMLタグのみ使用。コードブロック記号は使用禁止。商品：${normalizedProducts.map(p => p.title).join(', ')}`
+            }],
+            temperature: 0.7,
+            max_tokens: 3000
+          })
+        });
+
+        if (openAIResponse.ok) {
+          const aiData = await openAIResponse.json();
+          if (aiData.choices && aiData.choices[0]) {
+            content = aiData.choices[0].message.content;
+            useOpenAI = true;
+          }
+        }
+      } catch (e) {
+        console.error('OpenAI API error:', e);
+        useOpenAI = false;
+      }
+    } else {
+      useOpenAI = false;
+    }
+
+    // フォールバックまたはOpenAI生成コンテンツ
+    if (!useOpenAI || !content) {
+      content = `
+<h2>おすすめ商品${normalizedProducts.length}選</h2>
+${normalizedProducts.map((p, i) => `
+<div style="border: 1px solid #ddd; padding: 20px; margin: 20px 0; border-radius: 10px;">
+  <h3>${i + 1}. ${p.title}</h3>
+  ${p.imageUrl ? `<img src="${p.imageUrl}" alt="${p.title}" style="max-width: 300px;">` : ''}
+  <p><strong>価格:</strong> ${p.price}</p>
+  <div style="margin: 20px 0;">
+    <a href="${p.affiliateUrl}" target="_blank" rel="noopener noreferrer sponsored" 
+       style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%); 
+              color: white; text-decoration: none; border-radius: 30px; font-weight: bold;">
+      商品を購入する →
+    </a>
+  </div>
+</div>
+`).join('')}`;
+    }
+
+    // 不要な文字を削除
+    content = content
+      .replace(/```html?/gi, '')
+      .replace(/```/g, '')
+      .replace(/^\s+|\s+$/gm, '')
+      .replace(/\n{3,}/g, '\n\n');
+
+    const title = `【${keyword}】おすすめ${normalizedProducts.length}選`;
+
+    // WordPress投稿
+    if (autoPost) {
+      // Firebase Functions経由で投稿
+      const wpResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_FIREBASE_FUNCTIONS_URL}/generateProductReview`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            productData: normalizedProducts[0],
+            keyword: keyword,
+            autoPost: true
+          })
         }
       );
-
-      if (!wpResponse.ok) {
-        // REST APIが失敗した場合、XML-RPCにフォールバック
-        console.log('REST API failed, falling back to XML-RPC');
-        // XML-RPC処理（Firebase Functions経由）
-        const fbResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_FIREBASE_FUNCTIONS_URL}/postToWordPress`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(postData)
-          }
-        );
-        const fbResult = await fbResponse.json();
-        
-        return NextResponse.json({
-          success: true,
-          content: content,
-          title: title,
-          postId: fbResult.postId,
-          postUrl: fbResult.url,
-          method: 'xml-rpc'
-        });
-      }
-
-      const wpResult = await wpResponse.json();
       
+      const wpResult = await wpResponse.json();
       return NextResponse.json({
         success: true,
         content: content,
         title: title,
-        postId: wpResult.id,
-        postUrl: wpResult.link,
-        method: 'rest-api'
+        postId: wpResult.postId,
+        postUrl: wpResult.postUrl
       });
     }
 
-    // 下書きまたはプレビューのみ
     return NextResponse.json({
       success: true,
       content: content,
       title: title,
-      products: normalizedProducts,
-      preview: true
+      products: normalizedProducts
     });
 
   } catch (error) {
     console.error('Article generation error:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error',
-        details: error
-      },
+      { success: false, error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
