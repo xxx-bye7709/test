@@ -1,4 +1,4 @@
-// src/app/api/products/search/route.ts を修正
+// src/app/api/products/search/route.ts を以下に修正
 
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -10,16 +10,16 @@ export async function GET(req: NextRequest) {
 
     console.log('Searching products with query:', query);
 
-    // パラメータ名を修正
+    // searchProductsForDashboardを使用
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_FIREBASE_FUNCTIONS_URL}/searchProducts`,
+      `${process.env.NEXT_PUBLIC_FIREBASE_FUNCTIONS_URL}/searchProductsForDashboard`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          query: query,  // ← keywordからqueryに変更
+          keyword: query,  // keywordに戻す
           limit: parseInt(limit)
         })
       }
