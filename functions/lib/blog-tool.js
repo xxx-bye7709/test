@@ -518,7 +518,7 @@ HTMLタグを使用して視覚的に魅力的な記事を生成してくださ�
       
       console.log('OpenAI response length:', completion.choices[0].message.content.length);
       
-      // ★ここでcontentを取得してクリーンアップ
+      // ★修正: completionから正しくcontentを取得
       let content = completion.choices[0].message.content;
       
       // クリーンアップ処理
@@ -526,26 +526,23 @@ HTMLタグを使用して視覚的に魅力的な記事を生成してくださ�
         // HTMLコードブロックマーカーを削除
         .replace(/```html\s*\n?/gi, '')
         .replace(/```\s*\n?/gi, '')
-        // 不要な説明文を削除
-        .replace(/\*\*この.*?ください。?\*\*/gi, '')
-        .replace(/このHTML.*?ください。?/gi, '')
-        .replace(/このコード.*?ください。?/gi, '')
-        .replace(/ぜひご活用ください。?/gi, '')
+        // 不要な説明文を削除（より広範囲にマッチ）
+        .replace(/\*\*.*?ください。?\*\*/gi, '')
+        .replace(/この.*?ください。?/gi, '')
         .replace(/上記.*?ください。?/gi, '')
+        .replace(/以下.*?ください。?/gi, '')
+        .replace(/ぜひご.*?ください。?/gi, '')
         // 連続する改行を2つまでに制限
         .replace(/\n{3,}/g, '\n\n')
-        // 行頭・行末の空白を削除
-        .split('\n')
-        .map(line => line.trim())
-        .filter(line => line !== '')
-        .join('\n')
-        // 最初と最後の空白行を削除
+        // 空白のみの行を削除
+        .replace(/^\s*$/gm, '')
+        // 最初と最後の空白を削除
         .trim();
       
       // タイトル生成
       const title = products.length > 1 ? 
         `【${products.length}選】${keyword}のおすすめ商品を徹底比較！${new Date().getFullYear()}年最新版` :
-        `【${products.length === 1 ? products[0].review?.count || '364' : products.length}人が購入】${products[0].title?.substring(0, 30)}...の詳細レビュー｜${keyword}`;
+        `【${products[0].review?.count || '364'}人が購入】${products[0].title?.substring(0, 30)}...の詳細レビュー｜${keyword}`;
       
       return {
         title: title,
