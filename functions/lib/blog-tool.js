@@ -233,7 +233,12 @@ class BlogTool {
       };
       
       const processedTitle = sanitizeForXML(article.title || 'レビュー').substring(0, 100);
-      const processedContent = sanitizeForXML(article.content || '<p>内容</p>');
+      // コンテンツサイズチェックと制限
+      let processedContent = sanitizeForXML(article.content || '<p>内容</p>');
+      if (processedContent.length > 10000) {
+        console.log(`Content too long: ${processedContent.length} chars, truncating...`);
+        processedContent = processedContent.substring(0, 10000) + '...';
+      }
       
       const xmlPayload = `<?xml version="1.0" encoding="UTF-8"?>
 <methodCall>
