@@ -1710,8 +1710,6 @@ exports.searchProducts = functions
 /**
  * 商品レビュー記事生成
  */
-// index.jsのgenerateProductReview関数を以下のように修正
-
 exports.generateProductReview = functions
   .region('asia-northeast1')
   .runWith({
@@ -1733,11 +1731,9 @@ exports.generateProductReview = functions
     }
 
     try {
-      // BlogToolクラスをインポート（関数内でインポート）
       const BlogTool = require('./lib/blog-tool');
       const blogTool = new BlogTool();
       
-      // リクエストボディの取得
       const requestData = req.body || {};
       
       const { 
@@ -1756,9 +1752,69 @@ exports.generateProductReview = functions
         { autoPost }
       );
       
+      // ★1. コンテンツのクリーンアップ
+      if (article.content) {
+        article.content = article.content
+          .replace(/```html\n?/g, '')
+          .replace(/```\n?/g, '')
+          .replace(/\n{3,}/g, '\n\n')
+          .trim();
+      }
+      
+      // ★2. 画像の挿入
+      if (productData.imageUrl) {
+        const imageHtml = `
+<div class="product-main-image" style="text-align: center; margin: 30px 0;">
+  <img src="${productData.imageUrl}" alt="${productData.title || keyword}" 
+       style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+</div>`;
+        
+        const firstParagraphEnd = article.content.indexOf('</p>');
+        if (firstParagraphEnd !== -1) {
+          article.content = 
+            article.content.slice(0, firstParagraphEnd + 4) + 
+            imageHtml + 
+            article.content.slice(firstParagraphEnd + 4);
+        } else {
+          // 最初の段落が見つからない場合は最初に追加
+          article.content = imageHtml + article.content;
+        }
+      }
+      
+      // ★3. アフィリエイトリンクのボタン化
+      if (productData.affiliateUrl) {
+        const buttonHtml = `
+<div class="affiliate-button-wrapper" style="text-align: center; margin: 40px 0;">
+  <a href="${productData.affiliateUrl}" 
+     class="affiliate-button" 
+     target="_blank" 
+     rel="noopener noreferrer"
+     style="display: inline-block; 
+            padding: 16px 48px; 
+            background: linear-gradient(45deg, #4CAF50, #45a049); 
+            color: white; 
+            text-decoration: none; 
+            border-radius: 50px; 
+            font-size: 18px; 
+            font-weight: bold; 
+            box-shadow: 0 4px 15px rgba(76,175,80,0.3);
+            transition: transform 0.3s, box-shadow 0.3s;">
+    🛒 詳細を見る・購入する
+  </a>
+</div>`;
+        
+        article.content += buttonHtml;
+      }
+      
+      // ★4. タグ・カテゴリの設定
+      article.category = productData.category || 'products';
+      article.tags = [keyword, productData.genre, productData.maker].filter(Boolean);
+      
       console.log('Article generated:', {
         title: article.title,
-        contentLength: article.content?.length
+        contentLength: article.content?.length,
+        hasImage: !!productData.imageUrl,
+        hasButton: !!productData.affiliateUrl
       });
       
       // WordPressに投稿
@@ -1794,177 +1850,6 @@ exports.generateProductReview = functions
         error: error.message || 'Unknown error'
       });
     }
-  });
-
-// 最小限のテスト関数
-exports.testMinimalPost = functions
-  .region('asia-northeast1')
-  .https.onRequest(async (req, res) => {
-    try {
-      console.log('=== testMinimalPost START ===');
-      
-      // 環境変数を確認
-      console.log('ENV WORDPRESS_URL:', process.env.WORDPRESS_URL);
-      console.log('ENV WORDPRESS_USERNAME:', process.env.WORDPRESS_USERNAME);
-      console.log('ENV WORDPRESS_PASSWORD:', process.env.WORDPRESS_PASSWORD ? 'SET' : 'NOT SET');
-      console.log('ENV WORDPRESS_PASSWORD length:', process.env.WORDPRESS_PASSWORD?.length);
-      
-      // Firebase configを確認
-      const config = functions.config();
-      console.log('CONFIG wordpress.url:', config.wordpress?.url);
-      console.log('CONFIG wordpress.username:', config.wordpress?.username);
-      console.log('CONFIG wordpress.password:', config.wordpress?.password ? 'SET' : 'NOT SET');
-      console.log('CONFIG wordpress.password length:', config.wordpress?.password?.length);
-      
-      const BlogTool = require('./lib/blog-tool');
-      const blogTool = new BlogTool();
-      
-      // 実際に使用される値を確認
-      console.log('BlogTool URL:', blogTool.wordpressUrl);
-      console.log('BlogTool Username:', blogTool.wordpressUsername);
-      console.log('BlogTool Password:', blogTool.wordpressPassword);
-      
-      const article = {
-        title: 'Test Post',
-        content: '<p>This is a test post.</p>',
-        category: 'uncategorized',
-        tags: ['test']
-      };
-      
-      console.log('Calling postToWordPress...');
-      const result = await blogTool.postToWordPress(article);
-      console.log('Result:', result);
-      
-      res.json(result);
-    } catch (error) {
-      console.error('Error:', error);
-      res.status(500).json({ 
-        error: error.message,
-        stack: error.stack 
-      });
-    }
-  });
-
-// 直接XML-RPCを送信するテスト関数
-exports.testDirectXmlRpc = functions
-  .region('asia-northeast1')
-  .https.onRequest(async (req, res) => {
-    try {
-      const fetch = require('node-fetch');
-      
-      const xmlRequest = `<?xml version="1.0"?>
-<methodCall>
-  <methodName>wp.newPost</methodName>
-  <params>
-    <param><value><int>1</int></value></param>
-    <param><value><string>entamade</string></value></param>
-    <param><value><string>IChL 1yMu 4OUF YpL6 Wz8d oxln</string></value></param>
-    <param>
-      <value>
-        <struct>
-          <member>
-            <name>post_type</name>
-            <value><string>post</string></value>
-          </member>
-          <member>
-            <name>post_status</name>
-            <value><string>draft</string></value>
-          </member>
-          <member>
-            <name>post_title</name>
-            <value><string>Direct XML-RPC Test from Firebase</string></value>
-          </member>
-          <member>
-            <name>post_content</name>
-            <value><string>This is a test post sent directly via XML-RPC.</string></value>
-          </member>
-        </struct>
-      </value>
-    </param>
-  </params>
-</methodCall>`;
-
-      console.log('Sending direct XML-RPC request...');
-      
-      const response = await fetch('https://www.entamade.jp/xmlrpc.php', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'text/xml; charset=UTF-8'
-        },
-        body: xmlRequest
-      });
-      
-      const responseText = await response.text();
-      console.log('Response:', responseText);
-      
-      // postIdを抽出
-      const postIdMatch = responseText.match(/<string>(\d+)<\/string>/);
-      
-      if (postIdMatch) {
-        res.json({
-          success: true,
-          postId: postIdMatch[1],
-          message: 'Post created successfully via direct XML-RPC'
-        });
-      } else {
-        res.json({
-          success: false,
-          response: responseText
-        });
-      }
-      
-    } catch (error) {
-      console.error('Error:', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-/**
- * DMM API設定デバッグ
- */
-exports.debugDMM = functions
-  .region('asia-northeast1')
-  .https.onRequest(async (req, res) => {
-    cors(req, res, async () => {
-      try {
-        const DMMApi = require('./lib/dmm-api');
-        const dmmApi = new DMMApi();
-        
-        // 環境変数の状態を確認（値は一部隠す）
-        const apiIdStatus = process.env.DMM_API_ID ? 
-          `Set (${process.env.DMM_API_ID.substring(0, 4)}...)` : 'NOT SET';
-        const affiliateIdStatus = process.env.DMM_AFFILIATE_ID || 'NOT SET';
-        
-        // テストリクエスト
-        const axios = require('axios');
-        let testResult = 'Not tested';
-        
-        if (process.env.DMM_API_ID && process.env.DMM_AFFILIATE_ID) {
-          try {
-            const testUrl = `https://api.dmm.com/affiliate/v3/ItemList?api_id=${process.env.DMM_API_ID}&affiliate_id=${process.env.DMM_AFFILIATE_ID}&hits=1&keyword=test&output=json`;
-            const response = await axios.get(testUrl);
-            testResult = response.data?.result ? 'API Connected' : 'API Error: ' + JSON.stringify(response.data);
-          } catch (error) {
-            testResult = `Connection Error: ${error.message}`;
-          }
-        }
-        
-        res.json({
-          success: true,
-          config: {
-            DMM_API_ID: apiIdStatus,
-            DMM_AFFILIATE_ID: affiliateIdStatus,
-            baseUrl: 'https://api.dmm.com/affiliate/v3'
-          },
-          testResult: testResult
-        });
-      } catch (error) {
-        res.status(500).json({ 
-          success: false, 
-          error: error.message 
-        });
-      }
-    });
   });
 
 // index.js の最後に追加するシンプルなテスト関数
