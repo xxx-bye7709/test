@@ -208,18 +208,12 @@ class BlogTool {
 
   // WordPressへの投稿（手動XML-RPC）
   // blog-tool.js の postToWordPress関数内（約300行目）
+  // blog-tool.js - 超簡略版XML-RPC（300行目付近）
 async postToWordPress(article) {
   const https = require('https');
   
   try {
-    // 商品レビュー記事かどうかを判定
-    const isProductReview = article.category === 'レビュー' || 
-                           article.tags?.includes('レビュー') ||
-                           article.isProductReview === true;
-    
-    const postStatus = isProductReview ? 'draft' : 'publish';
-    
-    console.log(`📤 Manual XML-RPC posting as ${postStatus}...`);
+    console.log('📤 Attempting simplified XML-RPC post...');
     console.log('Article type:', isProductReview ? 'Product Review' : 'Regular Post');
     
     // ★修正: UTF-8を正しく処理
@@ -238,39 +232,24 @@ async postToWordPress(article) {
     const processedContent = sanitizeForXML(article.content || '<p>内容</p>');
     
     // ★修正: UTF-8 BOM付きXML宣言
-    const xmlPayload = `<?xml version="1.0" encoding="UTF-8"?>
+    // 最小限のXMLペイロード
+    const xmlPayload = `<?xml version="1.0"?>
 <methodCall>
-  <methodName>metaWeblog.newPost</methodName>
-  <params>
-    <param><value><string>1</string></value></param>
-    <param><value><string>${this.wordpressUsername}</string></value></param>
-    <param><value><string>${this.wordpressPassword}</string></value></param>
-    <param>
-      <value>
-        <struct>
-          <member>
-            <name>title</name>
-            <value><string>${processedTitle}</string></value>
-          </member>
-          <member>
-            <name>description</name>
-            <value><string>${processedContent}</string></value>
-          </member>
-          <member>
-            <name>post_status</name>
-            <value><string>${postStatus}</string></value>
-          </member>
-        </struct>
-      </value>
-    </param>
-    <param><value><boolean>${postStatus === 'publish' ? 1 : 0}</boolean></value></param>
-  </params>
+<methodName>metaWeblog.newPost</methodName>
+<params>
+<param><value>1</value></param>
+<param><value>${this.wordpressUsername}</value></param>
+<param><value>${this.wordpressPassword}</value></param>
+<param><value><struct>
+<member><name>title</name><value>Test</value></member>
+<member><name>description</name><value>Test content</value></member>
+<member><name>post_status</name><value>draft</value></member>
+</struct></value></param>
+<param><value>0</value></param>
+</params>
 </methodCall>`;
 
-    // ★修正: Buffer.byteLengthでUTF-8バイト数を正確に計算
-    const payloadBuffer = Buffer.from(xmlPayload, 'utf8');
-    
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const url = new URL(this.wordpressUrl);
       const options = {
         hostname: url.hostname,
@@ -278,41 +257,46 @@ async postToWordPress(article) {
         path: '/xmlrpc.php',
         method: 'POST',
         headers: {
-          'Content-Type': 'text/xml; charset=UTF-8',
-          'Content-Length': payloadBuffer.length,  // ★修正
-          'User-Agent': 'WordPress/6.0',
-          'Accept-Charset': 'UTF-8'  // ★追加
-        }
+          'Content-Type': 'text/xml',
+          'Content-Length': Buffer.byteLength(xmlPayload),
+        },
+        timeout: 15000  // 15秒タイムアウト
       };
       
-      // blog-tool.js postToWordPress関数内
       const req = https.request(options, (res) => {
         let data = '';
-        res.setEncoding('utf8');
-        res.on('data', (chunk) => { data += chunk; });
+        res.on('data', (chunk) => data += chunk);
         res.on('end', () => {
-          console.log('Response:', data.substring(0, 500));
-          // ... レスポンス処理
-        });
-      });
-
-          // タイムアウト設定を追加
-      req.setTimeout(10000, () => {  // 10秒でタイムアウト
-        console.error('Request timeout');
-        req.abort();
-        resolve({ 
-          success: false, 
-          error: 'Request timeout - WordPress not responding' 
+          console.log('XML-RPC Response received');
+          if (data.includes('<string>') || data.includes('<int>')) {
+            const idMatch = data.match(/<(?:string|int)>(\d+)<\/(?:string|int)>/);
+            resolve({
+              success: true,
+              postId: idMatch ? idMatch[1] : 'unknown',
+              url: `${this.wordpressUrl}/wp-admin/`,
+              message: 'Posted (minimal)'
+            });
+          } else {
+            resolve({ success: false, error: 'No ID in response' });
+          }
         });
       });
       
-      req.on('error', (error) => {
-        resolve({ success: false, error: error.message });
+      req.on('timeout', () => {
+        console.error('Request timeout after 15 seconds');
+        req.destroy();
+        resolve({ success: false, error: 'Timeout' });
       });
       
-      req.write(payloadBuffer);  // ★修正: Bufferを直接送信
+      req.on('error', (e) => {
+        console.error('Request error:', e.message);
+        resolve({ success: false, error: e.message });
+      });
+      
+      req.write(xmlPayload);
       req.end();
     });
+    
   } catch (error) {
     return { success: false, error: error.message };
   }
