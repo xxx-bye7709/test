@@ -222,9 +222,12 @@ class BlogTool {
       console.log(`📤 Manual XML-RPC posting as ${postStatus}...`);
       console.log('Article type:', isProductReview ? 'Product Review' : 'Regular Post');
       
+      // blog-tool.js の sanitizeForXML 関数を修正
       const sanitizeForXML = (str) => {
         if (!str) return '';
-        return str
+        // UTF-8文字を適切に処理
+        return Buffer.from(str)
+          .toString('utf8')
           .replace(/&/g, '&amp;')
           .replace(/</g, '&lt;')
           .replace(/>/g, '&gt;')
