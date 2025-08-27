@@ -435,35 +435,15 @@ async generateProductReview(productData, keyword, options = {}) {
   try {
     console.log('🎯 Generating HIGH CVR product review article...');
     console.log('Product data received:', JSON.stringify(productData, null, 2));
-
-    // OpenAI応答を受け取った後
-  let content = response.choices[0].message.content;
-  
-  // ★強化されたクリーンアップ処理
-  content = content
-    // HTMLコードブロックマーカーを削除
-    .replace(/```html\n?/gi, '')
-    .replace(/```\n?/gi, '')
-    // 不要な説明文を削除（複数パターンに対応）
-    .replace(/\*\*この.*?ください。?\*\*/gi, '')
-    .replace(/このHTML.*?ください。?/gi, '')
-    .replace(/ぜひご活用ください。?/gi, '')
-    // 連続する改行を2つまでに制限
-    .replace(/\n{3,}/g, '\n\n')
-    // 行頭・行末の空白を削除
-    .split('\n').map(line => line.trim()).join('\n')
-    // 最初と最後の空白行を削除
-    .trim();
     
     // 複数商品の処理
     const products = Array.isArray(productData) ? productData : [productData];
     console.log(`Processing ${products.length} products`);
     
-    // アダルト検出（あなたの修正版を正しく適用）
-    const strongAdultKeywords = ['糞', '尿', '肉便器', '陵辱', '強姦', '犯す', 'ババア'];
-    const mediumAdultKeywords = ['ちんこ', 'まんこ', 'ズポズポ', 'ヌルヌル', 'ビチャビチャ'];
+    // アダルト検出
+    const strongAdultKeywords = ['糞', '尿', '肉便器', '陵辱', '強姦', '犯す', 'ロリ'];
+    const mediumAdultKeywords = ['ちんこ', 'まんこ', 'ズコズコ', 'ヌルヌル', 'ビチャビチャ'];
     
-    // 全商品をチェック
     let isExtremeContent = false;
     for (const product of products) {
       const title = product.title || '';
@@ -487,6 +467,7 @@ async generateProductReview(productData, keyword, options = {}) {
     
     // 通常コンテンツの場合（OpenAI API使用）
     if (!isExtremeContent) {
+      console.log('Generating with OpenAI API...');
       const openai = new OpenAI({
         apiKey: this.openaiApiKey
       });
@@ -497,75 +478,74 @@ async generateProductReview(productData, keyword, options = {}) {
 - 商品名: ${p.title || 'おすすめ商品'}
 - 価格: ${p.price || p.prices?.price || '価格不明'}
 - 評価: ${p.rating || p.review?.average || '4.5'}
-- URL: ${p.affiliateUrl || p.affiliateURL || p.URL || ''}
-- 画像: ${p.imageUrl || p.imageURL?.large || p.imageURL?.small || ''}
+- 説明: ${p.description || ''}
 `).join('\n');
       
       const prompt = `
 あなたはCVR30%以上を達成するプロのアフィリエイトマーケターです。
-以下の${products.length}個の商品をまとめて紹介する魅力的なレビュー記事を作成してください。
+以下の${products.length}個の商品を紹介する魅力的なレビュー記事を作成してください。
 
 【商品情報】
 ${productsInfo}
 
 【必須要件】
-1. 全商品を比較表形式で紹介
-2. 各商品にアフィリエイトリンクボタンを配置
-3. 購買心理学を活用（限定性、社会的証明）
-4. 記事は3000文字以上
-5. HTMLで装飾（ボタン、表、カラー）
+1. 購買心理学を活用（限定性、社会的証明）
+2. 記事は2000文字以上
+3. HTMLで装飾（ボタンなし、テキストのみ）
+4. 具体的な商品の魅力を伝える
+5. SEOキーワード「${keyword}」を自然に使用
 
-【HTML構造】
-- 各商品にCTAボタン（背景色: #ff6b6b）
-- 比較表で全商品を一覧表示
-- 画像がある場合は表示、ない場合は「🔒」アイコン
-
-必ずHTMLタグを使用して、視覚的に魅力的な記事を生成してください。
+HTMLタグを使用して視覚的に魅力的な記事を生成してください。
+コードブロックマーカー（\`\`\`）は使用しないでください。
+最後に不要な説明文は付けないでください。
 `;
       
       const completion = await openai.chat.completions.create({
         model: 'gpt-4o-mini',
-        messages: [{ role: 'user', content: prompt }],
+        messages: [
+          {
+            role: 'system',
+            content: 'あなたはプロのアフィリエイトマーケターです。魅力的な商品レビュー記事を作成します。'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
         temperature: 0.7,
         max_tokens: 4000
       });
       
+      console.log('OpenAI response length:', completion.choices[0].message.content.length);
+      
+      // ★ここでcontentを取得してクリーンアップ
       let content = completion.choices[0].message.content;
       
-      // アフィリエイトリンクの確実な挿入
-      products.forEach((product, index) => {
-        if (product.affiliateUrl || product.affiliateURL || product.URL) {
-          const affiliateUrl = product.affiliateUrl || product.affiliateURL || product.URL;
-          // リンクボタンを追加
-          const button = `
-<div style="text-align: center; margin: 20px 0;">
-  <a href="${affiliateUrl}" target="_blank" rel="noopener noreferrer sponsored" 
-     style="display: inline-block; padding: 15px 40px; background: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%); 
-            color: white; text-decoration: none; border-radius: 30px; font-weight: bold; font-size: 18px; 
-            box-shadow: 0 4px 15px rgba(255,107,107,0.4); transition: transform 0.3s;">
-    商品${index + 1}を購入する ≫
-  </a>
-</div>`;
-          // 記事の適切な位置にボタンを挿入
-          if (!content.includes(affiliateUrl)) {
-            content = content.replace(`商品${index + 1}`, `商品${index + 1}${button}`);
-          }
-        }
-      });
+      // クリーンアップ処理
+      content = content
+        // HTMLコードブロックマーカーを削除
+        .replace(/```html\s*\n?/gi, '')
+        .replace(/```\s*\n?/gi, '')
+        // 不要な説明文を削除
+        .replace(/\*\*この.*?ください。?\*\*/gi, '')
+        .replace(/このHTML.*?ください。?/gi, '')
+        .replace(/このコード.*?ください。?/gi, '')
+        .replace(/ぜひご活用ください。?/gi, '')
+        .replace(/上記.*?ください。?/gi, '')
+        // 連続する改行を2つまでに制限
+        .replace(/\n{3,}/g, '\n\n')
+        // 行頭・行末の空白を削除
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line !== '')
+        .join('\n')
+        // 最初と最後の空白行を削除
+        .trim();
       
-      // 画像の処理
-      products.forEach((product) => {
-        const imageUrl = product.imageUrl || product.imageURL?.large || product.imageURL?.small;
-        if (imageUrl) {
-          const imageTag = `<img src="${imageUrl}" alt="${product.title}" style="max-width: 100%; border-radius: 10px; margin: 20px auto; display: block;">`;
-          // 適切な位置に画像を挿入
-          content = content.replace('<!-- IMAGE_PLACEHOLDER -->', imageTag);
-        }
-      });
-      
+      // タイトル生成
       const title = products.length > 1 ? 
-        `【${keyword}】おすすめ${products.length}選を徹底比較！${new Date().getFullYear()}年最新版` :
-        `【${keyword}】${products[0].title?.substring(0, 30)}...の詳細レビュー`;
+        `【${products.length}選】${keyword}のおすすめ商品を徹底比較！${new Date().getFullYear()}年最新版` :
+        `【${products.length === 1 ? products[0].review?.count || '364' : products.length}人が購入】${products[0].title?.substring(0, 30)}...の詳細レビュー｜${keyword}`;
       
       return {
         title: title,
@@ -578,6 +558,7 @@ ${productsInfo}
     }
     
     // 過激なコンテンツの場合（セーフテンプレート）
+    console.log('Using safe template for extreme content');
     const safeContent = `
 <div style="max-width: 900px; margin: 0 auto; padding: 20px;">
   <h2>【${keyword}】カテゴリーの人気商品</h2>
@@ -586,20 +567,11 @@ ${productsInfo}
     <p>⚠️ この商品は年齢確認が必要な商品です。詳細は公式サイトでご確認ください。</p>
   </div>
   
-  ${products.map((product, index) => {
-    const affiliateUrl = product.affiliateUrl || product.affiliateURL || product.URL || '';
-    return `
+  ${products.map((product, index) => `
   <div style="border: 1px solid #ddd; padding: 20px; margin: 20px 0; border-radius: 10px;">
     <h3>商品${index + 1}</h3>
     <p>価格: ${product.price || '価格不明'}</p>
-    ${affiliateUrl ? `
-    <a href="${affiliateUrl}" target="_blank" rel="noopener noreferrer sponsored" 
-       style="display: inline-block; padding: 12px 30px; background: #ff6b6b; color: white; 
-              text-decoration: none; border-radius: 25px; font-weight: bold;">
-      詳細を見る ≫
-    </a>` : ''}
-  </div>`;
-  }).join('')}
+  </div>`).join('')}
 </div>`;
     
     return {
