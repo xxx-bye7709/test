@@ -285,12 +285,24 @@ async postToWordPress(article) {
         }
       };
       
+      // blog-tool.js postToWordPress関数内
       const req = https.request(options, (res) => {
         let data = '';
-        res.setEncoding('utf8');  // ★追加: UTF-8エンコーディングを明示
+        res.setEncoding('utf8');
         res.on('data', (chunk) => { data += chunk; });
         res.on('end', () => {
-          // 以下同じ...
+          console.log('Response:', data.substring(0, 500));
+          // ... レスポンス処理
+        });
+      });
+
+          // タイムアウト設定を追加
+      req.setTimeout(10000, () => {  // 10秒でタイムアウト
+        console.error('Request timeout');
+        req.abort();
+        resolve({ 
+          success: false, 
+          error: 'Request timeout - WordPress not responding' 
         });
       });
       
