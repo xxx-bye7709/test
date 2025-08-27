@@ -2886,6 +2886,35 @@ exports.runScheduledPost = functions
         });
       }
 
+      // index.js に追加
+exports.testSimplePost = functions
+  .region('asia-northeast1')
+  .https.onRequest(async (req, res) => {
+    res.set('Access-Control-Allow-Origin', '*');
+    
+    try {
+      const BlogTool = require('./lib/blog-tool');
+      const blogTool = new BlogTool();
+      
+      const simpleArticle = {
+        title: "Test Post " + Date.now(),
+        content: "<p>Simple test content</p>",
+        category: "test",
+        tags: ["test"],
+        isProductReview: false
+      };
+      
+      const result = await blogTool.postToWordPress(simpleArticle);
+      
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ 
+        success: false, 
+        error: error.message 
+      });
+    }
+  });
+
       // カテゴリーをランダムに選択
       const categories = ['entertainment', 'anime', 'game', 'movie', 'music', 'tech', 'beauty', 'food'];
       const randomCategory = categories[Math.floor(Math.random() * categories.length)];
