@@ -1810,7 +1810,6 @@ exports.generateProductReview = functions
       }
       
       // ★アフィリエイトボタン（複数箇所に配置）
-      /*
       const affiliateUrl = productData.affiliateUrl || productData.affiliateURL || productData.url;
       if (affiliateUrl) {
         // 記事中央のボタン
@@ -1872,7 +1871,6 @@ exports.generateProductReview = functions
         // 最後にボタンを追加
         article.content += bottomButtonHtml;
       }
-      */
       
       // ★アイキャッチ画像の設定（WordPressメタデータ用）
       if (imageUrl) {
