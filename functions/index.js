@@ -1743,7 +1743,12 @@ exports.generateProductReview = functions
         productData = {}
       } = requestData;
       
-      console.log('Product data:', productData);
+      console.log('Product data received:', {
+        hasTitle: !!productData.title,
+        hasPrice: !!productData.price,
+        hasImageUrl: !!productData.imageUrl,  // ★画像URL確認
+        hasAffiliateUrl: !!productData.affiliateUrl
+      });
       
       // 記事生成
       const article = await blogTool.generateProductReview(
@@ -1752,69 +1757,136 @@ exports.generateProductReview = functions
         { autoPost }
       );
       
-      // ★1. コンテンツのクリーンアップ
+      // ★強化されたクリーンアップ処理
       if (article.content) {
+        // 不要なテキストパターンを削除
+        const unwantedPatterns = [
+          /\*\*この.*?ください。?\*\*/gi,
+          /このHTML.*?ください。?/gi,
+          /このコード.*?ください。?/gi,
+          /ぜひご活用ください。?/gi,
+          /上記.*?ください。?/gi,
+          /```html\n?/gi,
+          /```\n?/gi
+        ];
+        
+        unwantedPatterns.forEach(pattern => {
+          article.content = article.content.replace(pattern, '');
+        });
+        
+        // 空白の正規化
         article.content = article.content
-          .replace(/```html\n?/g, '')
-          .replace(/```\n?/g, '')
-          .replace(/\n{3,}/g, '\n\n')
+          .replace(/\n{3,}/g, '\n\n')  // 3つ以上の改行を2つに
+          .replace(/^\n+/, '')          // 先頭の改行を削除
+          .replace(/\n+$/, '')          // 末尾の改行を削除
+          .replace(/^[ \t]+$/gm, '')    // 空白のみの行を削除
           .trim();
       }
       
-      // ★2. 画像の挿入
-      if (productData.imageUrl) {
+      // ★画像URLが存在する場合のみ画像を挿入
+      const imageUrl = productData.imageUrl || productData.imageURL || productData.image;
+      if (imageUrl) {
+        console.log('Inserting image:', imageUrl);
+        
         const imageHtml = `
 <div class="product-main-image" style="text-align: center; margin: 30px 0;">
-  <img src="${productData.imageUrl}" alt="${productData.title || keyword}" 
-       style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+  <img src="${imageUrl}" alt="${productData.title || keyword}" 
+       style="max-width: 600px; width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
 </div>`;
         
-        const firstParagraphEnd = article.content.indexOf('</p>');
-        if (firstParagraphEnd !== -1) {
+        // 最初の</h2>タグの後に画像を挿入
+        const h2End = article.content.indexOf('</h2>');
+        if (h2End !== -1) {
           article.content = 
-            article.content.slice(0, firstParagraphEnd + 4) + 
+            article.content.slice(0, h2End + 5) + 
             imageHtml + 
-            article.content.slice(firstParagraphEnd + 4);
+            article.content.slice(h2End + 5);
         } else {
-          // 最初の段落が見つからない場合は最初に追加
-          article.content = imageHtml + article.content;
+          // h2がない場合は最初に追加
+          article.content = imageHtml + '\n\n' + article.content;
         }
+      } else {
+        console.log('⚠️ No image URL provided in productData');
       }
       
-      // ★3. アフィリエイトリンクのボタン化
-      if (productData.affiliateUrl) {
-        const buttonHtml = `
-<div class="affiliate-button-wrapper" style="text-align: center; margin: 40px 0;">
-  <a href="${productData.affiliateUrl}" 
+      // ★アフィリエイトボタン（複数箇所に配置）
+      const affiliateUrl = productData.affiliateUrl || productData.affiliateURL || productData.url;
+      if (affiliateUrl) {
+        // 記事中央のボタン
+        const midButtonHtml = `
+<div class="affiliate-button-wrapper" style="text-align: center; margin: 35px 0; padding: 20px; background: linear-gradient(135deg, #fff9e6 0%, #ffeb99 100%); border-radius: 12px;">
+  <p style="margin-bottom: 15px; font-size: 16px; color: #666;">＼ 今すぐチェック ／</p>
+  <a href="${affiliateUrl}" 
      class="affiliate-button" 
      target="_blank" 
      rel="noopener noreferrer"
      style="display: inline-block; 
-            padding: 16px 48px; 
+            padding: 18px 50px; 
+            background: linear-gradient(45deg, #ff6b6b, #ff5252); 
+            color: white; 
+            text-decoration: none; 
+            border-radius: 50px; 
+            font-size: 20px; 
+            font-weight: bold; 
+            box-shadow: 0 6px 20px rgba(255,107,107,0.4);
+            transition: all 0.3s;">
+    🎬 詳細を見る
+  </a>
+</div>`;
+
+        // 記事最後のボタン
+        const bottomButtonHtml = `
+<div class="affiliate-button-wrapper" style="text-align: center; margin: 45px 0; padding: 30px; background: linear-gradient(135deg, #e6f7ff 0%, #bae7ff 100%); border-radius: 12px; border: 2px solid #1890ff;">
+  <h3 style="color: #0050b3; margin-bottom: 10px;">気になった方はこちら</h3>
+  <p style="margin-bottom: 20px; color: #666;">セール情報や在庫状況もチェックできます</p>
+  <a href="${affiliateUrl}" 
+     class="affiliate-button" 
+     target="_blank" 
+     rel="noopener noreferrer"
+     style="display: inline-block; 
+            padding: 20px 60px; 
             background: linear-gradient(45deg, #4CAF50, #45a049); 
             color: white; 
             text-decoration: none; 
             border-radius: 50px; 
-            font-size: 18px; 
+            font-size: 22px; 
             font-weight: bold; 
-            box-shadow: 0 4px 15px rgba(76,175,80,0.3);
-            transition: transform 0.3s, box-shadow 0.3s;">
-    🛒 詳細を見る・購入する
+            box-shadow: 0 8px 25px rgba(76,175,80,0.35);
+            transition: all 0.3s;">
+    🛒 商品ページへ
   </a>
+  <p style="margin-top: 15px; font-size: 12px; color: #999;">※在庫切れの場合があります</p>
 </div>`;
         
-        article.content += buttonHtml;
+        // 記事の中間地点にボタンを挿入
+        const midPoint = Math.floor(article.content.length / 2);
+        const nearestParagraph = article.content.indexOf('</p>', midPoint);
+        if (nearestParagraph !== -1) {
+          article.content = 
+            article.content.slice(0, nearestParagraph + 4) + 
+            midButtonHtml + 
+            article.content.slice(nearestParagraph + 4);
+        }
+        
+        // 最後にボタンを追加
+        article.content += bottomButtonHtml;
       }
       
-      // ★4. タグ・カテゴリの設定
+      // ★アイキャッチ画像の設定（WordPressメタデータ用）
+      if (imageUrl) {
+        article.featuredImage = imageUrl;
+      }
+      
+      // タグ・カテゴリの設定
       article.category = productData.category || 'products';
       article.tags = [keyword, productData.genre, productData.maker].filter(Boolean);
       
-      console.log('Article generated:', {
+      console.log('Article processed:', {
         title: article.title,
         contentLength: article.content?.length,
-        hasImage: !!productData.imageUrl,
-        hasButton: !!productData.affiliateUrl
+        hasImage: !!imageUrl,
+        hasButton: !!affiliateUrl,
+        hasFeaturedImage: !!article.featuredImage
       });
       
       // WordPressに投稿
@@ -1835,6 +1907,7 @@ exports.generateProductReview = functions
         postId: postResult.postId || null,
         postUrl: postResult.url || null,
         postSuccess: postResult.success || false,
+        hasImage: !!imageUrl,
         message: postResult.success ? 'Posted successfully' : 'Article generated but posting failed',
         postError: postResult.error || null
       };
@@ -1844,7 +1917,6 @@ exports.generateProductReview = functions
       
     } catch (error) {
       console.error('Error in generateProductReview:', error);
-      res.set('Content-Type', 'application/json; charset=utf-8');
       res.status(500).json({
         success: false,
         error: error.message || 'Unknown error'
