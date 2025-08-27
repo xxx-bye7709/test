@@ -468,9 +468,6 @@ async generateProductReview(productData, keyword, options = {}) {
     // 通常コンテンツの場合（OpenAI API使用）
     if (!isExtremeContent) {
       console.log('Generating with OpenAI API...');
-      const openai = new OpenAI({
-        apiKey: this.openaiApiKey
-      });
       
       // 複数商品の情報をプロンプトに含める
       const productsInfo = products.map((p, i) => `
@@ -491,7 +488,7 @@ ${productsInfo}
 【必須要件】
 1. 購買心理学を活用（限定性、社会的証明）
 2. 記事は2000文字以上
-3. HTMLで装飾（ボタンなし、テキストのみ）
+3. HTMLで装飾（h2, h3, p, ul, li, strong, emタグ使用）
 4. 具体的な商品の魅力を伝える
 5. SEOキーワード「${keyword}」を自然に使用
 
@@ -500,7 +497,8 @@ HTMLタグを使用して視覚的に魅力的な記事を生成してくださ�
 最後に不要な説明文は付けないでください。
 `;
       
-      const completion = await openai.chat.completions.create({
+      // OpenAI API呼び出し
+      const completion = await this.openai.chat.completions.create({
         model: 'gpt-4o-mini',
         messages: [
           {
@@ -518,20 +516,22 @@ HTMLタグを使用して視覚的に魅力的な記事を生成してくださ�
       
       console.log('OpenAI response length:', completion.choices[0].message.content.length);
       
-      // ★修正: completionから正しくcontentを取得
-      let content = completion.choices[0].message.content;
+      // completionからcontentを取得してクリーンアップ
+      let content = completion.choices[0].message.content || '';
       
       // クリーンアップ処理
       content = content
         // HTMLコードブロックマーカーを削除
         .replace(/```html\s*\n?/gi, '')
         .replace(/```\s*\n?/gi, '')
-        // 不要な説明文を削除（より広範囲にマッチ）
-        .replace(/\*\*.*?ください。?\*\*/gi, '')
-        .replace(/この.*?ください。?/gi, '')
+        // 不要な説明文を削除
+        .replace(/\*\*この.*?ください。?\*\*/gi, '')
+        .replace(/このHTML.*?ください。?/gi, '')
+        .replace(/このコード.*?ください。?/gi, '')
+        .replace(/ぜひご活用ください。?/gi, '')
         .replace(/上記.*?ください。?/gi, '')
-        .replace(/以下.*?ください。?/gi, '')
-        .replace(/ぜひご.*?ください。?/gi, '')
+        .replace(/以上.*?ください。?/gi, '')
+        .replace(/以下.*?活用.*?。?/gi, '')
         // 連続する改行を2つまでに制限
         .replace(/\n{3,}/g, '\n\n')
         // 空白のみの行を削除
@@ -540,9 +540,12 @@ HTMLタグを使用して視覚的に魅力的な記事を生成してくださ�
         .trim();
       
       // タイトル生成
+      const reviewCount = products[0].reviewCount || products[0].review?.count || '364';
       const title = products.length > 1 ? 
         `【${products.length}選】${keyword}のおすすめ商品を徹底比較！${new Date().getFullYear()}年最新版` :
-        `【${products[0].review?.count || '364'}人が購入】${products[0].title?.substring(0, 30)}...の詳細レビュー｜${keyword}`;
+        `【${reviewCount}人が購入】${products[0].title?.substring(0, 30)}...の詳細レビュー｜${keyword}`;
+      
+      console.log('Article generated successfully');
       
       return {
         title: title,
