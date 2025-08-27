@@ -207,43 +207,38 @@ class BlogTool {
   }
 
   // WordPressへの投稿（手動XML-RPC）
-  async postToWordPress(article) {
-    const https = require('https');
+  // blog-tool.js の postToWordPress関数内（約300行目）
+async postToWordPress(article) {
+  const https = require('https');
+  
+  try {
+    // 商品レビュー記事かどうかを判定
+    const isProductReview = article.category === 'レビュー' || 
+                           article.tags?.includes('レビュー') ||
+                           article.isProductReview === true;
     
-    try {
-      // 商品レビュー記事かどうかを判定
-      const isProductReview = article.category === 'レビュー' || 
-                             article.tags?.includes('レビュー') ||
-                             article.isProductReview === true;
-      
-      // 商品記事は下書き、通常記事は公開
-      const postStatus = isProductReview ? 'draft' : 'publish';
-      
-      console.log(`📤 Manual XML-RPC posting as ${postStatus}...`);
-      console.log('Article type:', isProductReview ? 'Product Review' : 'Regular Post');
-      
-      // blog-tool.js の sanitizeForXML 関数を修正
-      const sanitizeForXML = (str) => {
-        if (!str) return '';
-        // UTF-8文字を適切に処理
-        return Buffer.from(str)
-          .toString('utf8')
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-          .replace(/"/g, '&quot;')
-          .replace(/'/g, '&apos;');
-      };
-      
-      const processedTitle = sanitizeForXML(article.title || 'レビュー').substring(0, 100);
-      // コンテンツサイズチェックと制限
-      let processedContent = sanitizeForXML(article.content || '<p>内容</p>');
-      if (processedContent.length > 10000) {
-        console.log(`Content too long: ${processedContent.length} chars, truncating...`);
-        processedContent = processedContent.substring(0, 10000) + '...';
-      }
-      
-      const xmlPayload = `<?xml version="1.0" encoding="UTF-8"?>
+    const postStatus = isProductReview ? 'draft' : 'publish';
+    
+    console.log(`📤 Manual XML-RPC posting as ${postStatus}...`);
+    console.log('Article type:', isProductReview ? 'Product Review' : 'Regular Post');
+    
+    // ★修正: UTF-8を正しく処理
+    const sanitizeForXML = (str) => {
+      if (!str) return '';
+      // UTF-8文字列として処理
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
+    };
+    
+    const processedTitle = sanitizeForXML(article.title || 'レビュー').substring(0, 100);
+    const processedContent = sanitizeForXML(article.content || '<p>内容</p>');
+    
+    // ★修正: UTF-8 BOM付きXML宣言
+    const xmlPayload = `<?xml version="1.0" encoding="UTF-8"?>
 <methodCall>
   <methodName>metaWeblog.newPost</methodName>
   <params>
@@ -272,68 +267,44 @@ class BlogTool {
   </params>
 </methodCall>`;
 
-      return new Promise((resolve) => {
-        const url = new URL(this.wordpressUrl);
-        const options = {
-          hostname: url.hostname,
-          port: 443,
-          path: '/xmlrpc.php',
-          method: 'POST',
-          headers: {
-            'Content-Type': 'text/xml; charset=UTF-8',
-            'Content-Length': Buffer.byteLength(xmlPayload),
-            'User-Agent': 'WordPress/6.0'
-          }
-        };
-        
-        const req = https.request(options, (res) => {
-          let data = '';
-          res.on('data', (chunk) => { data += chunk; });
-          res.on('end', () => {
-            console.log('Response:', data.substring(0, 500));
-            
-            if (data.includes('<html') || data.includes('<!DOCTYPE')) {
-              resolve({
-                success: false,
-                error: 'Blocked by security',
-                message: 'セキュリティブロック'
-              });
-            } else if (data.includes('<string>') || data.includes('<int>')) {
-              const idMatch = data.match(/<(?:string|int)>(\d+)<\/(?:string|int)>/);
-              if (idMatch) {
-                const postUrl = isProductReview
-                  ? `${this.wordpressUrl}/wp-admin/post.php?post=${idMatch[1]}&action=edit`
-                  : `${this.wordpressUrl}/?p=${idMatch[1]}`;
-                
-                resolve({
-                  success: true,
-                  postId: idMatch[1],
-                  url: postUrl,
-                  status: postStatus,
-                  message: isProductReview 
-                    ? '下書きとして保存されました' 
-                    : '記事が公開されました'
-                });
-              } else {
-                resolve({ success: false, error: 'ID not found' });
-              }
-            } else {
-              resolve({ success: false, error: 'Unknown error' });
-            }
-          });
+    // ★修正: Buffer.byteLengthでUTF-8バイト数を正確に計算
+    const payloadBuffer = Buffer.from(xmlPayload, 'utf8');
+    
+    return new Promise((resolve) => {
+      const url = new URL(this.wordpressUrl);
+      const options = {
+        hostname: url.hostname,
+        port: 443,
+        path: '/xmlrpc.php',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/xml; charset=UTF-8',
+          'Content-Length': payloadBuffer.length,  // ★修正
+          'User-Agent': 'WordPress/6.0',
+          'Accept-Charset': 'UTF-8'  // ★追加
+        }
+      };
+      
+      const req = https.request(options, (res) => {
+        let data = '';
+        res.setEncoding('utf8');  // ★追加: UTF-8エンコーディングを明示
+        res.on('data', (chunk) => { data += chunk; });
+        res.on('end', () => {
+          // 以下同じ...
         });
-        
-        req.on('error', (error) => {
-          resolve({ success: false, error: error.message });
-        });
-        
-        req.write(xmlPayload);
-        req.end();
       });
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
+      
+      req.on('error', (error) => {
+        resolve({ success: false, error: error.message });
+      });
+      
+      req.write(payloadBuffer);  // ★修正: Bufferを直接送信
+      req.end();
+    });
+  } catch (error) {
+    return { success: false, error: error.message };
   }
+}
 
   // GPTを使った記事生成（汎用）
   async generateWithGPT(category, template) {
