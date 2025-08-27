@@ -2474,6 +2474,7 @@ ${p.description}
   });
 
 // ===== 3. ヘルパー関数: 商品セクションHTML生成 =====
+// index.js の generateProductSection 関数を修正（1834行目付近）
 function generateProductSection(products, articleType) {
   const sectionTitle = articleType === 'ranking' 
     ? '🏆 ランキング詳細' 
@@ -2497,24 +2498,28 @@ ${products.map((p, index) => {
     ? '#CD7F32'
     : '#4CAF50';
   
+  // ★修正: affiliateUrlの存在チェックを追加
+  const affiliateUrl = p.affiliateUrl || p.affiliateURL || p.url || '#';
+  const imageUrl = p.imageUrl || p.imageURL || p.thumbnailUrl || '';
+  
   return `
 <div class="product-item" style="margin-bottom: 30px; padding: 25px; border: 3px solid ${borderColor}; border-radius: 12px; background: linear-gradient(135deg, #ffffff 0%, #f9f9f9 100%); position: relative; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
   ${rankBadge}
   <div style="display: flex; gap: 20px; ${articleType === 'ranking' && index < 3 ? 'margin-left: 20px;' : ''}">
-    ${p.imageUrl ? `
+    ${imageUrl ? `
     <div style="flex-shrink: 0;">
-      <img src="${p.imageUrl}" alt="${p.title}" style="max-width: 220px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.15);">
+      <img src="${imageUrl}" alt="${p.title || ''}" style="max-width: 220px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.15);">
     </div>
     ` : ''}
     <div style="flex-grow: 1;">
       <h3 style="margin-top: 0; color: #333; font-size: 1.3em; line-height: 1.4;">
         ${articleType === 'ranking' ? `【第${index + 1}位】` : `【Pick ${index + 1}】`}
-        ${p.title}
+        ${p.title || '商品名不明'}
       </h3>
       
       <div style="display: flex; align-items: center; gap: 20px; margin: 15px 0;">
         <span style="font-size: 1.5em; color: #ff4444; font-weight: bold;">
-          💰 ${p.price}
+          💰 ${p.price || '価格不明'}
         </span>
         ${p.listPrice && p.listPrice !== p.price ? `
         <span style="text-decoration: line-through; color: #999;">
@@ -2523,13 +2528,13 @@ ${products.map((p, index) => {
         ` : ''}
       </div>
       
-      ${p.rating > 0 ? `
+      ${p.rating && p.rating > 0 ? `
       <div style="margin: 10px 0;">
         <span style="color: #FFA500; font-size: 1.1em;">
           ${'⭐'.repeat(Math.round(p.rating))} ${p.rating}/5.0
         </span>
         <span style="color: #666; margin-left: 10px;">
-          (${p.reviewCount}件のレビュー)
+          (${p.reviewCount || 0}件のレビュー)
         </span>
       </div>
       ` : ''}
@@ -2550,7 +2555,7 @@ ${products.map((p, index) => {
       ` : ''}
       
       <div style="margin-top: 20px;">
-        <a href="${p.affiliateUrl}" target="_blank" rel="noopener noreferrer" 
+        <a href="${affiliateUrl}" target="_blank" rel="noopener noreferrer" 
            style="display: inline-block; padding: 14px 40px; background: linear-gradient(45deg, ${borderColor}, ${borderColor}dd); 
                   color: white; text-decoration: none; border-radius: 30px; 
                   font-weight: bold; font-size: 1.1em; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
