@@ -435,6 +435,25 @@ async generateProductReview(productData, keyword, options = {}) {
   try {
     console.log('🎯 Generating HIGH CVR product review article...');
     console.log('Product data received:', JSON.stringify(productData, null, 2));
+
+    // OpenAI応答を受け取った後
+  let content = response.choices[0].message.content;
+  
+  // ★強化されたクリーンアップ処理
+  content = content
+    // HTMLコードブロックマーカーを削除
+    .replace(/```html\n?/gi, '')
+    .replace(/```\n?/gi, '')
+    // 不要な説明文を削除（複数パターンに対応）
+    .replace(/\*\*この.*?ください。?\*\*/gi, '')
+    .replace(/このHTML.*?ください。?/gi, '')
+    .replace(/ぜひご活用ください。?/gi, '')
+    // 連続する改行を2つまでに制限
+    .replace(/\n{3,}/g, '\n\n')
+    // 行頭・行末の空白を削除
+    .split('\n').map(line => line.trim()).join('\n')
+    // 最初と最後の空白行を削除
+    .trim();
     
     // 複数商品の処理
     const products = Array.isArray(productData) ? productData : [productData];
