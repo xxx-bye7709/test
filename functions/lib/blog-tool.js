@@ -215,8 +215,6 @@ async postToWordPress(article) {
   
   try {
     console.log('📤 Starting WordPress XML-RPC post...');
-    console.log('Target URL:', this.wordpressUrl);
-    console.log('XML-RPC endpoint:', `${this.wordpressUrl}/xmlrpc.php`);
     
     const {
       title = '',
@@ -228,21 +226,21 @@ async postToWordPress(article) {
     } = article;
     
     console.log('Article type:', isProductReview ? 'Product Review' : 'Regular Post');
+    console.log('Content preview:', content.substring(0, 100));
     
-    const sanitizeForXML = (str) => {
+    // XMLペイロード用のエスケープ（CDATAを使用）
+    const escapeXML = (str) => {
       if (!str) return '';
+      // XMLの特殊文字のみエスケープ（HTMLタグは保持）
       return String(str)
         .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&apos;');
+        .replace(/'/g, '&apos;')
+        .replace(/"/g, '&quot;');
     };
     
-    const processedTitle = sanitizeForXML(title).substring(0, 100);
-    const processedContent = sanitizeForXML(content || '<p>内容</p>');
+    const processedTitle = escapeXML(title).substring(0, 200);
     
-    // 最小限のXMLペイロード
+    // HTMLコンテンツはCDATAセクションで囲む
     const xmlPayload = `<?xml version="1.0" encoding="UTF-8"?>
 <methodCall>
   <methodName>wp.newPost</methodName>
@@ -267,7 +265,38 @@ async postToWordPress(article) {
           </member>
           <member>
             <name>post_content</name>
-            <value><string>${processedContent}</string></value>
+            <value><string><![CDATA[${content}]]></string></value>
+          </member>
+          <member>
+            <name>post_author</name>
+            <value><int>1</int></value>
+          </member>
+          <member>
+            <name>terms_names</name>
+            <value>
+              <struct>
+                <member>
+                  <name>category</name>
+                  <value>
+                    <array>
+                      <data>
+                        <value><string>${category}</string></value>
+                      </data>
+                    </array>
+                  </value>
+                </member>
+                <member>
+                  <name>post_tag</name>
+                  <value>
+                    <array>
+                      <data>
+                        ${tags.map(tag => `<value><string>${escapeXML(tag)}</string></value>`).join('')}
+                      </data>
+                    </array>
+                  </value>
+                </member>
+              </struct>
+            </value>
           </member>
         </struct>
       </value>
@@ -276,6 +305,7 @@ async postToWordPress(article) {
 </methodCall>`;
     
     console.log('XML payload size:', xmlPayload.length, 'bytes');
+    console.log('Payload preview:', xmlPayload.substring(0, 500));
     
     const url = new URL(`${this.wordpressUrl}/xmlrpc.php`);
     
@@ -285,36 +315,33 @@ async postToWordPress(article) {
         port: 443,
         path: '/xmlrpc.php',
         method: 'POST',
-        timeout: 30000, // 30秒に短縮
+        timeout: 30000,
         headers: {
-          'Content-Type': 'text/xml',
+          'Content-Type': 'text/xml; charset=UTF-8',
           'Content-Length': Buffer.byteLength(xmlPayload, 'utf8'),
           'User-Agent': 'WordPress XML-RPC Client'
         }
       };
       
-      console.log('Request options:', JSON.stringify(options, null, 2));
-      
       const req = https.request(options, (res) => {
         console.log('Response status:', res.statusCode);
-        console.log('Response headers:', res.headers);
         
         let data = '';
         res.on('data', chunk => data += chunk);
         res.on('end', () => {
-          console.log('Response received, length:', data.length);
+          console.log('Response preview:', data.substring(0, 200));
           
           if (res.statusCode === 200) {
             const idMatch = data.match(/<int>(\d+)<\/int>/);
+            const postId = idMatch ? idMatch[1] : null;
+            
             resolve({
               success: true,
-              postId: idMatch ? idMatch[1] : 'unknown',
-              url: `${this.wordpressUrl}/?p=${idMatch ? idMatch[1] : ''}`,
+              postId: postId,
+              url: postId ? `${this.wordpressUrl}/?p=${postId}` : this.wordpressUrl,
               message: 'Posted successfully'
             });
           } else {
-            console.error('HTTP Error:', res.statusCode);
-            console.error('Response body:', data.substring(0, 500));
             resolve({ 
               success: false, 
               error: `HTTP ${res.statusCode}`,
@@ -325,34 +352,23 @@ async postToWordPress(article) {
       });
       
       req.on('timeout', () => {
-        console.error('Request timeout after 30 seconds');
+        console.error('Request timeout');
         req.destroy();
-        resolve({ 
-          success: false, 
-          error: 'Timeout after 30s',
-          suggestion: 'Check XML-RPC endpoint or WAF settings'
-        });
+        resolve({ success: false, error: 'Timeout' });
       });
       
       req.on('error', (e) => {
         console.error('Request error:', e.message);
-        resolve({ 
-          success: false, 
-          error: e.message 
-        });
+        resolve({ success: false, error: e.message });
       });
       
-      console.log('Sending request...');
       req.write(xmlPayload);
       req.end();
     });
     
   } catch (error) {
-    console.error('❌ WordPress posting error:', error);
-    return { 
-      success: false, 
-      error: error.message 
-    };
+    console.error('❌ Error:', error);
+    return { success: false, error: error.message };
   }
 }
 
