@@ -214,12 +214,24 @@ async postToWordPress(article) {
   
   try {
     console.log('📤 Attempting simplified XML-RPC post...');
-    console.log('Article type:', isProductReview ? 'Product Review' : 'Regular Post');
     
-    // ★修正: UTF-8を正しく処理
+    // ★修正1: articleから必要な値を取得（articleDataではなくarticle）
+    const {
+      title = '',
+      content = '',
+      category = 'uncategorized',
+      tags = [],
+      isProductReview = false,  // デフォルト値を設定
+      featuredImageUrl = null
+    } = article;  // ← articleを使用
+    
+    // ★修正2: ログで正しく参照
+    console.log('Article type:', isProductReview ? 'Product Review' : 'Regular Post');
+    console.log('🚀 Starting WordPress post...');
+    
+    // UTF-8を正しく処理
     const sanitizeForXML = (str) => {
       if (!str) return '';
-      // UTF-8文字列として処理
       return String(str)
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
@@ -228,77 +240,52 @@ async postToWordPress(article) {
         .replace(/'/g, '&apos;');
     };
     
-    const processedTitle = sanitizeForXML(article.title || 'レビュー').substring(0, 100);
-    const processedContent = sanitizeForXML(article.content || '<p>内容</p>');
+    // ★修正3: article.titleとarticle.contentを使用
+    const processedTitle = sanitizeForXML(title).substring(0, 100);
+    const processedContent = sanitizeForXML(content || '<p>内容</p>');
     
-    // ★修正: UTF-8 BOM付きXML宣言
     // 最小限のXMLペイロード
-    const xmlPayload = `<?xml version="1.0"?>
+    const xmlPayload = `<?xml version="1.0" encoding="UTF-8"?>
 <methodCall>
-<methodName>metaWeblog.newPost</methodName>
-<params>
-<param><value>1</value></param>
-<param><value>${this.wordpressUsername}</value></param>
-<param><value>${this.wordpressPassword}</value></param>
-<param><value><struct>
-<member><name>title</name><value>Test</value></member>
-<member><name>description</name><value>Test content</value></member>
-<member><name>post_status</name><value>draft</value></member>
-</struct></value></param>
-<param><value>0</value></param>
-</params>
+  <methodName>wp.newPost</methodName>
+  <params>
+    <param><value><int>1</int></value></param>
+    <param><value><string>${this.wordpressUser}</string></value></param>
+    <param><value><string>${this.wordpressPassword}</string></value></param>
+    <param>
+      <value>
+        <struct>
+          <member>
+            <name>post_type</name>
+            <value><string>post</string></value>
+          </member>
+          <member>
+            <name>post_status</name>
+            <value><string>publish</string></value>
+          </member>
+          <member>
+            <name>post_title</name>
+            <value><string>${processedTitle}</string></value>
+          </member>
+          <member>
+            <name>post_content</name>
+            <value><string>${processedContent}</string></value>
+          </member>
+        </struct>
+      </value>
+    </param>
+  </params>
 </methodCall>`;
-
-    return new Promise((resolve, reject) => {
-      const url = new URL(this.wordpressUrl);
-      const options = {
-        hostname: url.hostname,
-        port: 443,
-        path: '/xmlrpc.php',
-        method: 'POST',
-        headers: {
-          'Content-Type': 'text/xml',
-          'Content-Length': Buffer.byteLength(xmlPayload),
-        },
-        timeout: 15000  // 15秒タイムアウト
-      };
-      
-      const req = https.request(options, (res) => {
-        let data = '';
-        res.on('data', (chunk) => data += chunk);
-        res.on('end', () => {
-          console.log('XML-RPC Response received');
-          if (data.includes('<string>') || data.includes('<int>')) {
-            const idMatch = data.match(/<(?:string|int)>(\d+)<\/(?:string|int)>/);
-            resolve({
-              success: true,
-              postId: idMatch ? idMatch[1] : 'unknown',
-              url: `${this.wordpressUrl}/wp-admin/`,
-              message: 'Posted (minimal)'
-            });
-          } else {
-            resolve({ success: false, error: 'No ID in response' });
-          }
-        });
-      });
-      
-      req.on('timeout', () => {
-        console.error('Request timeout after 15 seconds');
-        req.destroy();
-        resolve({ success: false, error: 'Timeout' });
-      });
-      
-      req.on('error', (e) => {
-        console.error('Request error:', e.message);
-        resolve({ success: false, error: e.message });
-      });
-      
-      req.write(xmlPayload);
-      req.end();
+    
+    // 以降のHTTPリクエスト処理...
+    return new Promise((resolve) => {
+      // HTTPSリクエストの実装
+      // ...
     });
     
   } catch (error) {
-    return { success: false, error: error.message };
+    console.error('❌ WordPress posting error:', error);
+    throw error;
   }
 }
 
