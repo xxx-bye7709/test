@@ -4,22 +4,21 @@ const { OpenAI } = require('openai');
 
 class BlogTool {
   constructor() {
-    const config = functions.config();
+  const config = functions.config();
   
-    // デバッグ：設定値を確認
-    console.log('🔍 Firebase config wordpress:', JSON.stringify(config.wordpress || {}, null, 2));
-
-    
-    // 環境変数から設定を取得
-    this.wordpressUrl = process.env.WORDPRESS_URL || functions.config().wordpress?.url || 'https://www.entamade.jp';
-    this.wordpressUser = process.env.WORDPRESS_USER || functions.config().wordpress?.user;
-    this.wordpressPassword = process.env.WORDPRESS_PASSWORD || functions.config().wordpress?.app_password;
-    this.openaiApiKey = process.env.OPENAI_API_KEY || functions.config().openai?.api_key;
-
-    // デバッグ：設定された値を確認
-    console.log('📌 Set values:');
-    console.log('- wordpressUser:', this.wordpressUser || 'UNDEFINED!');
-    console.log('- wordpressPassword:', this.wordpressPassword ? '***SET***' : 'UNDEFINED!');
+  // デバッグ：設定値を確認
+  console.log('🔍 Firebase config wordpress:', JSON.stringify(config.wordpress || {}, null, 2));
+  
+  // Firebase configから直接取得（process.envは使わない）
+  this.wordpressUrl = config.wordpress?.url || 'https://www.entamade.jp';
+  this.wordpressUser = config.wordpress?.user;  // ← process.envを削除
+  this.wordpressPassword = config.wordpress?.app_password;  // ← process.envを削除
+  this.openaiApiKey = config.openai?.api_key || process.env.OPENAI_API_KEY;
+  
+  // デバッグ：設定された値を確認
+  console.log('📌 Set values:');
+  console.log('- wordpressUser:', this.wordpressUser || 'UNDEFINED');
+  console.log('- wordpressPassword:', this.wordpressPassword ? 'SET' : 'UNDEFINED');
 
     if (!this.openaiApiKey) {
       throw new Error('OpenAI API key not configured');
