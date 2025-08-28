@@ -6,8 +6,8 @@ class BlogTool {
   constructor() {
     // 環境変数から設定を取得
     this.wordpressUrl = process.env.WORDPRESS_URL || functions.config().wordpress?.url || 'https://www.entamade.jp';
-    this.wordpressUsername = process.env.WORDPRESS_USERNAME || functions.config().wordpress?.username;
-    this.wordpressPassword = process.env.WORDPRESS_PASSWORD || functions.config().wordpress?.password;
+    this.wordpressUser = process.env.WORDPRESS_USER || functions.config().wordpress?.user;
+    this.wordpressPassword = process.env.WORDPRESS_PASSWORD || functions.config().wordpress?.app_password;
     this.openaiApiKey = process.env.OPENAI_API_KEY || functions.config().openai?.api_key;
 
     if (!this.openaiApiKey) {
