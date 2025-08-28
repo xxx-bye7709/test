@@ -3088,20 +3088,18 @@ function generateArticleContent(products, articleType, keyword) {
 
   //checkConfig関数を追加
   exports.checkConfig = functions
-    .region('asia-northeast1')
-    .https.onRequest(async (req, res) => {
-      res.set('Access-Control-Allow-Origin', '*');
-      const config = functions.config();
-      
-      console.log('Full config:', JSON.stringify(config, null, 2));
-      
-      res.json({
-        hasWordpress: !!config.wordpress,
-        wordpressUser: config.wordpress?.user || 'NOT SET',
-        wordpressUrl: config.wordpress?.url || 'NOT SET',
-        hasPassword: !!config.wordpress?.app_password,
-        hasOpenAI: !!config.openai?.api_key
-      });
+  .region('asia-northeast1')
+  .https.onRequest(async (req, res) => {
+    res.set('Access-Control-Allow-Origin', '*');
+    const config = functions.config();
+    console.log('Full config:', JSON.stringify(config, null, 2));
+    res.json({
+      hasWordpress: !!config.wordpress,
+      wordpressUser: config.wordpress?.username || 'NOT SET',  // user → username
+      wordpressUrl: config.wordpress?.url || 'NOT SET',
+      hasPassword: !!config.wordpress?.password,  // app_password → password
+      hasOpenAI: !!config.openai?.api_key
     });
+  });
 
 
