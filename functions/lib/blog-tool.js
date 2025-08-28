@@ -4,21 +4,21 @@ const { OpenAI } = require('openai');
 
 class BlogTool {
   constructor() {
-  const config = functions.config();
-  
-  // デバッグ：設定値を確認
-  console.log('🔍 Firebase config wordpress:', JSON.stringify(config.wordpress || {}, null, 2));
-  
-  // Firebase configから直接取得（process.envは使わない）
-  this.wordpressUrl = config.wordpress?.url || 'https://www.entamade.jp';
-  this.wordpressUser = config.wordpress?.username;  // ← process.envを削除
-  this.wordpressPassword = config.wordpress?.password;  // ← process.envを削除
-  this.openaiApiKey = config.openai?.api_key || process.env.OPENAI_API_KEY;
-  
-  // デバッグ：設定された値を確認
-  console.log('📌 Set values:');
-  console.log('- wordpressUser:', this.wordpressUser || 'UNDEFINED');
-  console.log('- wordpressPassword:', this.wordpressPassword ? 'SET' : 'UNDEFINED');
+    const config = functions.config();
+    
+    // デバッグ：設定値を確認
+    console.log('🔍 Firebase config wordpress:', JSON.stringify(config.wordpress || {}, null, 2));
+    
+    // Firebase configから直接取得（process.envは使わない）
+    this.wordpressUrl = config.wordpress?.url || 'https://www.entamade.jp';
+    this.wordpressUser = config.wordpress?.username;  // ← process.envを削除
+    this.wordpressPassword = config.wordpress?.password;  // ← process.envを削除
+    this.openaiApiKey = config.openai?.api_key || process.env.OPENAI_API_KEY;
+    
+    // デバッグ：設定された値を確認
+    console.log('📌 Set values:');
+    console.log('- wordpressUser:', this.wordpressUser || 'UNDEFINED');
+    console.log('- wordpressPassword:', this.wordpressPassword ? 'SET' : 'UNDEFINED');
 
     if (!this.openaiApiKey) {
       throw new Error('OpenAI API key not configured');
@@ -217,41 +217,38 @@ class BlogTool {
   }
 
   // WordPressへの投稿（手動XML-RPC）
-  // blog-tool.js の postToWordPress関数内（約300行目）
-  // blog-tool.js - 超簡略版XML-RPC（300行目付近）
-  // タイムアウトを短くし、詳細なログを追加8/28
-async postToWordPress(article) {
-  const https = require('https');
-  
-  try {
-    console.log('📤 Starting WordPress XML-RPC post...');
+  async postToWordPress(article) {
+    const https = require('https');
     
-    const {
-      title = '',
-      content = '',
-      category = 'uncategorized',
-      tags = [],
-      isProductReview = false,
-      featuredImageUrl = null
-    } = article;
-    
-    console.log('Article type:', isProductReview ? 'Product Review' : 'Regular Post');
-    console.log('Content preview:', content.substring(0, 100));
-    
-    // XMLペイロード用のエスケープ（CDATAを使用）
-    const escapeXML = (str) => {
-      if (!str) return '';
-      // XMLの特殊文字のみエスケープ（HTMLタグは保持）
-      return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/'/g, '&apos;')
-        .replace(/"/g, '&quot;');
-    };
-    
-    const processedTitle = escapeXML(title).substring(0, 200);
-    
-    // HTMLコンテンツはCDATAセクションで囲む
-    const xmlPayload = `<?xml version="1.0" encoding="UTF-8"?>
+    try {
+      console.log('📤 Starting WordPress XML-RPC post...');
+      
+      const {
+        title = '',
+        content = '',
+        category = 'uncategorized',
+        tags = [],
+        isProductReview = false,
+        featuredImageUrl = null
+      } = article;
+      
+      console.log('Article type:', isProductReview ? 'Product Review' : 'Regular Post');
+      console.log('Content preview:', content.substring(0, 100));
+      
+      // XMLペイロード用のエスケープ（CDATAを使用）
+      const escapeXML = (str) => {
+        if (!str) return '';
+        // XMLの特殊文字のみエスケープ（HTMLタグは保持）
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/'/g, '&apos;')
+          .replace(/"/g, '&quot;');
+      };
+      
+      const processedTitle = escapeXML(title).substring(0, 200);
+      
+      // HTMLコンテンツはCDATAセクションで囲む
+      const xmlPayload = `<?xml version="1.0" encoding="UTF-8"?>
 <methodCall>
   <methodName>wp.newPost</methodName>
   <params>
@@ -313,105 +310,106 @@ async postToWordPress(article) {
     </param>
   </params>
 </methodCall>`;
-    
-    console.log('XML payload size:', xmlPayload.length, 'bytes');
-    console.log('Payload preview:', xmlPayload.substring(0, 500));
-    
-    const url = new URL(`${this.wordpressUrl}/xmlrpc.php`);
-    
-    return new Promise((resolve) => {
-      const options = {
-        hostname: url.hostname,
-        port: 443,
-        path: '/xmlrpc.php',
-        method: 'POST',
-        timeout: 30000,
-        headers: {
-          'Content-Type': 'text/xml; charset=UTF-8',
-          'Content-Length': Buffer.byteLength(xmlPayload, 'utf8'),
-          'User-Agent': 'WordPress XML-RPC Client'
-        }
-      };
       
-      const req = https.request(options, (res) => {
-        console.log('Response status:', res.statusCode);
+      console.log('XML payload size:', xmlPayload.length, 'bytes');
+      console.log('Payload preview:', xmlPayload.substring(0, 500));
+      
+      const url = new URL(`${this.wordpressUrl}/xmlrpc.php`);
+      
+      return new Promise((resolve) => {
+        const options = {
+          hostname: url.hostname,
+          port: 443,
+          path: '/xmlrpc.php',
+          method: 'POST',
+          timeout: 30000,
+          headers: {
+            'Content-Type': 'text/xml; charset=UTF-8',
+            'Content-Length': Buffer.byteLength(xmlPayload, 'utf8'),
+            'User-Agent': 'WordPress XML-RPC Client'
+          }
+        };
         
-        let data = '';
-        res.on('data', chunk => data += chunk);
-        res.on('end', () => {
-  console.log('Full XML response:', data);
-  
-  // faultチェック
-  if (data.includes('<fault>')) {
-    const faultMatch = data.match(/<faultCode>.*?<int>(\d+)<\/int>/);
-    const faultCode = faultMatch ? faultMatch[1] : 'unknown';
-    console.error('XML-RPC Fault:', faultCode);
-    resolve({
-      success: false,
-      error: `Fault ${faultCode}`
-    });
-    return;
-  }
-  
-  if (res.statusCode === 200) {
-    // WordPress XML-RPCは通常<string>でIDを返す
-    let postId = null;
-    
-    // パターン1: <string>ID</string>
-    const stringMatch = data.match(/<methodResponse>[\s\S]*?<value>[\s\S]*?<string>(\d+)<\/string>/);
-    if (stringMatch) postId = stringMatch[1];
-    
-    // パターン2: <int>ID</int>
-    if (!postId) {
-      const intMatch = data.match(/<methodResponse>[\s\S]*?<value>[\s\S]*?<int>(\d+)<\/int>/);
-      if (intMatch) postId = intMatch[1];
-    }
-    
-    // パターン3: シンプルなパターン
-    if (!postId) {
-      const simpleMatch = data.match(/<value><string>(\d+)<\/string><\/value>/);
-      if (simpleMatch) postId = simpleMatch[1];
-    }
-    
-    console.log('ID extraction results:', {
-      found: !!postId,
-      postId: postId
-    });
-    
-    resolve({
-      success: true,
-      postId: postId,
-      url: postId ? `${this.wordpressUrl}/?p=${postId}` : this.wordpressUrl,
-      message: postId ? 'Posted successfully' : 'Posted but ID not captured'
-    });
-  } else {
-    resolve({
-      success: false,
-      error: `HTTP ${res.statusCode}`
-    });
-  }
-});
-      
-      req.on('timeout', () => {
-        console.error('Request timeout');
-        req.destroy();
-        resolve({ success: false, error: 'Timeout' });
+        const req = https.request(options, (res) => {
+          console.log('Response status:', res.statusCode);
+          
+          let data = '';
+          res.on('data', chunk => data += chunk);
+          res.on('end', () => {
+            console.log('Full XML response:', data);
+            
+            // faultチェック
+            if (data.includes('<fault>')) {
+              const faultMatch = data.match(/<faultCode>.*?<int>(\d+)<\/int>/);
+              const faultCode = faultMatch ? faultMatch[1] : 'unknown';
+              console.error('XML-RPC Fault:', faultCode);
+              resolve({
+                success: false,
+                error: `Fault ${faultCode}`
+              });
+              return;
+            }
+            
+            if (res.statusCode === 200) {
+              // WordPress XML-RPCは通常<string>でIDを返す
+              let postId = null;
+              
+              // パターン1: <string>ID</string>
+              const stringMatch = data.match(/<methodResponse>[\s\S]*?<value>[\s\S]*?<string>(\d+)<\/string>/);
+              if (stringMatch) postId = stringMatch[1];
+              
+              // パターン2: <int>ID</int>
+              if (!postId) {
+                const intMatch = data.match(/<methodResponse>[\s\S]*?<value>[\s\S]*?<int>(\d+)<\/int>/);
+                if (intMatch) postId = intMatch[1];
+              }
+              
+              // パターン3: シンプルなパターン
+              if (!postId) {
+                const simpleMatch = data.match(/<value><string>(\d+)<\/string><\/value>/);
+                if (simpleMatch) postId = simpleMatch[1];
+              }
+              
+              console.log('ID extraction results:', {
+                found: !!postId,
+                postId: postId
+              });
+              
+              resolve({
+                success: true,
+                postId: postId,
+                url: postId ? `${this.wordpressUrl}/?p=${postId}` : this.wordpressUrl,
+                message: postId ? 'Posted successfully' : 'Posted but ID not captured'
+              });
+            } else {
+              resolve({
+                success: false,
+                error: `HTTP ${res.statusCode}`
+              });
+            }
+          });
+        });
+        
+        req.on('timeout', () => {
+          console.error('Request timeout');
+          req.destroy();
+          resolve({ success: false, error: 'Timeout' });
+        });
+        
+        req.on('error', (e) => {
+          console.error('Request error:', e.message);
+          resolve({ success: false, error: e.message });
+        });
+        
+        req.write(xmlPayload);
+        req.end();
       });
       
-      req.on('error', (e) => {
-        console.error('Request error:', e.message);
-        resolve({ success: false, error: e.message });
-      });
-      
-      req.write(xmlPayload);
-      req.end();
-    });
-    
-  } catch (error) {
-    console.error('❌ Error:', error);
-    return { success: false, error: error.message };
+    } catch (error) {
+      console.error('❌ Error:', error);
+      return { success: false, error: error.message };
+    }
   }
-}
 
   // GPTを使った記事生成（汎用）
   async generateWithGPT(category, template) {
@@ -468,7 +466,7 @@ ${categoryData.topic}について、最新の情報をまとめた魅力的な�
   // 記事生成（カテゴリー別）
   async generateArticle(category = 'entertainment', options = {}) {
     try {
-      console.log(`📝 Generating ${category} article...`);
+      console.log(`🔍 Generating ${category} article...`);
       
       // GPTで本文生成
       const content = await this.generateWithGPT(category, options.template);
@@ -515,56 +513,55 @@ ${categoryData.topic}について、最新の情報をまとめた魅力的な�
     }
   }
 
-  // blog-tool.jsのgenerateProductReview関数を完全修正
-
-async generateProductReview(productData, keyword, options = {}) {
-  try {
-    console.log('🎯 Generating HIGH CVR product review article...');
-    console.log('Product data received:', JSON.stringify(productData, null, 2));
-    
-    // 複数商品の処理
-    const products = Array.isArray(productData) ? productData : [productData];
-    console.log(`Processing ${products.length} products`);
-    
-    // アダルト検出
-    const strongAdultKeywords = ['糞', '尿', '肉便器', '陵辱', '強姦', '犯す', 'ロリ'];
-    const mediumAdultKeywords = ['ちんこ', 'まんこ', 'ズコズコ', 'ヌルヌル', 'ビチャビチャ'];
-    
-    let isExtremeContent = false;
-    for (const product of products) {
-      const title = product.title || '';
-      const description = product.description || '';
+  // 商品レビュー記事生成
+  async generateProductReview(productData, keyword, options = {}) {
+    try {
+      console.log('🎯 Generating HIGH CVR product review article...');
+      console.log('Product data received:', JSON.stringify(productData, null, 2));
       
-      const strongCount = strongAdultKeywords.filter(word => 
-        title.includes(word) || description.includes(word)
-      ).length;
+      // 複数商品の処理
+      const products = Array.isArray(productData) ? productData : [productData];
+      console.log(`Processing ${products.length} products`);
       
-      const mediumCount = mediumAdultKeywords.filter(word => 
-        title.includes(word) || description.includes(word)
-      ).length;
+      // アダルト検出
+      const strongAdultKeywords = ['糞', '尿', '肉便器', '陵辱', '強姦', '犯す', 'ロリ'];
+      const mediumAdultKeywords = ['ちんこ', 'まんこ', 'ズコズコ', 'ヌルヌル', 'ビチャビチャ'];
       
-      if (strongCount >= 1 || mediumCount >= 3) {
-        isExtremeContent = true;
-        break;
+      let isExtremeContent = false;
+      for (const product of products) {
+        const title = product.title || '';
+        const description = product.description || '';
+        
+        const strongCount = strongAdultKeywords.filter(word => 
+          title.includes(word) || description.includes(word)
+        ).length;
+        
+        const mediumCount = mediumAdultKeywords.filter(word => 
+          title.includes(word) || description.includes(word)
+        ).length;
+        
+        if (strongCount >= 1 || mediumCount >= 3) {
+          isExtremeContent = true;
+          break;
+        }
       }
-    }
-    
-    console.log(`Adult content check: ${isExtremeContent ? '⚠️ Extreme' : '✅ Normal'}`);
-    
-    // 通常コンテンツの場合（OpenAI API使用）
-    if (!isExtremeContent) {
-      console.log('Generating with OpenAI API...');
       
-      // 複数商品の情報をプロンプトに含める
-      const productsInfo = products.map((p, i) => `
+      console.log(`Adult content check: ${isExtremeContent ? '⚠️ Extreme' : '✅ Normal'}`);
+      
+      // 通常コンテンツの場合（OpenAI API使用）
+      if (!isExtremeContent) {
+        console.log('Generating with OpenAI API...');
+        
+        // 複数商品の情報をプロンプトに含める
+        const productsInfo = products.map((p, i) => `
 商品${i + 1}:
 - 商品名: ${p.title || 'おすすめ商品'}
 - 価格: ${p.price || p.prices?.price || '価格不明'}
 - 評価: ${p.rating || p.review?.average || '4.5'}
 - 説明: ${p.description || ''}
 `).join('\n');
-      
-      const prompt = `
+        
+        const prompt = `
 あなたはCVR30%以上を達成するプロのアフィリエイトマーケターです。
 以下の${products.length}個の商品を紹介する魅力的なレビュー記事を作成してください。
 
@@ -582,70 +579,70 @@ HTMLタグを使用して視覚的に魅力的な記事を生成してくださ�
 コードブロックマーカー（\`\`\`）は使用しないでください。
 最後に不要な説明文は付けないでください。
 `;
+        
+        // OpenAI API呼び出し
+        const completion = await this.openai.chat.completions.create({
+          model: 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content: 'あなたはプロのアフィリエイトマーケターです。魅力的な商品レビュー記事を作成します。'
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          temperature: 0.7,
+          max_tokens: 4000
+        });
+        
+        console.log('OpenAI response length:', completion.choices[0].message.content.length);
+        
+        // completionからcontentを取得してクリーンアップ
+        let content = completion.choices[0].message.content || '';
+        
+        // クリーンアップ処理
+        content = content
+          // HTMLコードブロックマーカーを削除
+          .replace(/```html\s*\n?/gi, '')
+          .replace(/```\s*\n?/gi, '')
+          // 不要な説明文を削除
+          .replace(/\*\*この.*?ください。?\*\*/gi, '')
+          .replace(/このHTML.*?ください。?/gi, '')
+          .replace(/このコード.*?ください。?/gi, '')
+          .replace(/ぜひご活用ください。?/gi, '')
+          .replace(/上記.*?ください。?/gi, '')
+          .replace(/以上.*?ください。?/gi, '')
+          .replace(/以下.*?活用.*?。?/gi, '')
+          // 連続する改行を2つまでに制限
+          .replace(/\n{3,}/g, '\n\n')
+          // 空白のみの行を削除
+          .replace(/^\s*$/gm, '')
+          // 最初と最後の空白を削除
+          .trim();
+        
+        // タイトル生成
+        const reviewCount = products[0].reviewCount || products[0].review?.count || '364';
+        const title = products.length > 1 ? 
+          `【${products.length}選】${keyword}のおすすめ商品を徹底比較！${new Date().getFullYear()}年最新版` :
+          `【${reviewCount}人が購入】${products[0].title?.substring(0, 30)}...の詳細レビュー｜${keyword}`;
+        
+        console.log('Article generated successfully');
+        
+        return {
+          title: title,
+          content: content,
+          category: 'レビュー',
+          tags: [keyword, 'レビュー', '比較', 'おすすめ', `${new Date().getFullYear()}年`],
+          status: 'draft',
+          isProductReview: true
+        };
+      }
       
-      // OpenAI API呼び出し
-      const completion = await this.openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: 'あなたはプロのアフィリエイトマーケターです。魅力的な商品レビュー記事を作成します。'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 4000
-      });
-      
-      console.log('OpenAI response length:', completion.choices[0].message.content.length);
-      
-      // completionからcontentを取得してクリーンアップ
-      let content = completion.choices[0].message.content || '';
-      
-      // クリーンアップ処理
-      content = content
-        // HTMLコードブロックマーカーを削除
-        .replace(/```html\s*\n?/gi, '')
-        .replace(/```\s*\n?/gi, '')
-        // 不要な説明文を削除
-        .replace(/\*\*この.*?ください。?\*\*/gi, '')
-        .replace(/このHTML.*?ください。?/gi, '')
-        .replace(/このコード.*?ください。?/gi, '')
-        .replace(/ぜひご活用ください。?/gi, '')
-        .replace(/上記.*?ください。?/gi, '')
-        .replace(/以上.*?ください。?/gi, '')
-        .replace(/以下.*?活用.*?。?/gi, '')
-        // 連続する改行を2つまでに制限
-        .replace(/\n{3,}/g, '\n\n')
-        // 空白のみの行を削除
-        .replace(/^\s*$/gm, '')
-        // 最初と最後の空白を削除
-        .trim();
-      
-      // タイトル生成
-      const reviewCount = products[0].reviewCount || products[0].review?.count || '364';
-      const title = products.length > 1 ? 
-        `【${products.length}選】${keyword}のおすすめ商品を徹底比較！${new Date().getFullYear()}年最新版` :
-        `【${reviewCount}人が購入】${products[0].title?.substring(0, 30)}...の詳細レビュー｜${keyword}`;
-      
-      console.log('Article generated successfully');
-      
-      return {
-        title: title,
-        content: content,
-        category: 'レビュー',
-        tags: [keyword, 'レビュー', '比較', 'おすすめ', `${new Date().getFullYear()}年`],
-        status: 'draft',
-        isProductReview: true
-      };
-    }
-    
-    // 過激なコンテンツの場合（セーフテンプレート）
-    console.log('Using safe template for extreme content');
-    const safeContent = `
+      // 過激なコンテンツの場合（セーフテンプレート）
+      console.log('Using safe template for extreme content');
+      const safeContent = `
 <div style="max-width: 900px; margin: 0 auto; padding: 20px;">
   <h2>【${keyword}】カテゴリーの人気商品</h2>
   
@@ -659,21 +656,21 @@ HTMLタグを使用して視覚的に魅力的な記事を生成してくださ�
     <p>価格: ${product.price || '価格不明'}</p>
   </div>`).join('')}
 </div>`;
-    
-    return {
-      title: `【${keyword}】人気商品まとめ`,
-      content: safeContent,
-      category: 'レビュー',
-      tags: [keyword, 'まとめ'],
-      status: 'draft',
-      isProductReview: true
-    };
-    
-  } catch (error) {
-    console.error('❌ Error in generateProductReview:', error);
-    throw error;
+      
+      return {
+        title: `【${keyword}】人気商品まとめ`,
+        content: safeContent,
+        category: 'レビュー',
+        tags: [keyword, 'まとめ'],
+        status: 'draft',
+        isProductReview: true
+      };
+      
+    } catch (error) {
+      console.error('❌ Error in generateProductReview:', error);
+      throw error;
+    }
   }
-}
 
   // タグ生成の改善
   generateTags(keyword, category, productTitle) {
