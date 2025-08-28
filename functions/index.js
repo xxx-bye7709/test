@@ -3084,6 +3084,7 @@ function generateArticleContent(products, articleType, keyword) {
       res.status(500).json({ error: error.message });
     }
   });
+  }
 
   //checkConfig関数を追加
   exports.checkConfig = functions
@@ -3102,6 +3103,5 @@ function generateArticleContent(products, articleType, keyword) {
         hasOpenAI: !!config.openai?.api_key
       });
     });
-}
 
 
