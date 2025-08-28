@@ -343,7 +343,8 @@ async postToWordPress(article) {
   
   // faultチェック
   if (data.includes('<fault>')) {
-    const faultCode = data.match(/<faultCode>.*?<int>(\d+)<\/int>/)?.[1];
+    const faultMatch = data.match(/<faultCode>.*?<int>(\d+)<\/int>/);
+    const faultCode = faultMatch ? faultMatch[1] : 'unknown';
     console.error('XML-RPC Fault:', faultCode);
     resolve({
       success: false,
@@ -358,18 +359,23 @@ async postToWordPress(article) {
     
     // パターン1: <string>ID</string>
     const stringMatch = data.match(/<methodResponse>[\s\S]*?<value>[\s\S]*?<string>(\d+)<\/string>/);
+    if (stringMatch) postId = stringMatch[1];
+    
     // パターン2: <int>ID</int>
-    const intMatch = data.match(/<methodResponse>[\s\S]*?<value>[\s\S]*?<int>(\d+)<\/int>/);
+    if (!postId) {
+      const intMatch = data.match(/<methodResponse>[\s\S]*?<value>[\s\S]*?<int>(\d+)<\/int>/);
+      if (intMatch) postId = intMatch[1];
+    }
+    
     // パターン3: シンプルなパターン
-    const simpleMatch = data.match(/<value><string>(\d+)<\/string><\/value>/);
+    if (!postId) {
+      const simpleMatch = data.match(/<value><string>(\d+)<\/string><\/value>/);
+      if (simpleMatch) postId = simpleMatch[1];
+    }
     
-    postId = stringMatch?.[1] || intMatch?.[1] || simpleMatch?.[1];
-    
-    console.log('Pattern matches:', {
-      string: stringMatch?.[1],
-      int: intMatch?.[1],
-      simple: simpleMatch?.[1],
-      final: postId
+    console.log('ID extraction results:', {
+      found: !!postId,
+      postId: postId
     });
     
     resolve({
