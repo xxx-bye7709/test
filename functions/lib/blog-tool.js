@@ -339,27 +339,52 @@ async postToWordPress(article) {
         let data = '';
         res.on('data', chunk => data += chunk);
         res.on('end', () => {
-          console.log('Response preview:', data.substring(0, 200));
-          
-          if (res.statusCode === 200) {
-            const idMatch = data.match(/<int>(\d+)<\/int>/);
-            const postId = idMatch ? idMatch[1] : null;
-            
-            resolve({
-              success: true,
-              postId: postId,
-              url: postId ? `${this.wordpressUrl}/?p=${postId}` : this.wordpressUrl,
-              message: 'Posted successfully'
-            });
-          } else {
-            resolve({ 
-              success: false, 
-              error: `HTTP ${res.statusCode}`,
-              details: data.substring(0, 200)
-            });
-          }
-        });
-      });
+  console.log('Full XML response:', data);
+  
+  // faultチェック
+  if (data.includes('<fault>')) {
+    const faultCode = data.match(/<faultCode>.*?<int>(\d+)<\/int>/)?.[1];
+    console.error('XML-RPC Fault:', faultCode);
+    resolve({
+      success: false,
+      error: `Fault ${faultCode}`
+    });
+    return;
+  }
+  
+  if (res.statusCode === 200) {
+    // WordPress XML-RPCは通常<string>でIDを返す
+    let postId = null;
+    
+    // パターン1: <string>ID</string>
+    const stringMatch = data.match(/<methodResponse>[\s\S]*?<value>[\s\S]*?<string>(\d+)<\/string>/);
+    // パターン2: <int>ID</int>
+    const intMatch = data.match(/<methodResponse>[\s\S]*?<value>[\s\S]*?<int>(\d+)<\/int>/);
+    // パターン3: シンプルなパターン
+    const simpleMatch = data.match(/<value><string>(\d+)<\/string><\/value>/);
+    
+    postId = stringMatch?.[1] || intMatch?.[1] || simpleMatch?.[1];
+    
+    console.log('Pattern matches:', {
+      string: stringMatch?.[1],
+      int: intMatch?.[1],
+      simple: simpleMatch?.[1],
+      final: postId
+    });
+    
+    resolve({
+      success: true,
+      postId: postId,
+      url: postId ? `${this.wordpressUrl}/?p=${postId}` : this.wordpressUrl,
+      message: postId ? 'Posted successfully' : 'Posted but ID not captured'
+    });
+  } else {
+    resolve({
+      success: false,
+      error: `HTTP ${res.statusCode}`
+    });
+  }
+});
       
       req.on('timeout', () => {
         console.error('Request timeout');
