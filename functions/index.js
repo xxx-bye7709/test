@@ -2998,6 +2998,61 @@ function generateArticleContent(products, articleType, keyword) {
   
   return content;
 }
+
+  // XML-RPC接続テスト関数を追加8/28
+  exports.testXmlRpc = functions
+  .region('asia-northeast1')
+  .https.onRequest(async (req, res) => {
+    res.set('Access-Control-Allow-Origin', '*');
+    
+    const https = require('https');
+    const xmlTest = `<?xml version="1.0"?>
+<methodCall>
+  <methodName>system.listMethods</methodName>
+  <params></params>
+</methodCall>`;
+    
+    const url = 'https://www.entamade.jp/xmlrpc.php';
+    
+    try {
+      const result = await new Promise((resolve) => {
+        const req = https.request(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'text/xml',
+            'Content-Length': Buffer.byteLength(xmlTest)
+          },
+          timeout: 10000
+        }, (response) => {
+          let data = '';
+          response.on('data', chunk => data += chunk);
+          response.on('end', () => {
+            resolve({
+              status: response.statusCode,
+              headers: response.headers,
+              body: data.substring(0, 500)
+            });
+          });
+        });
+        
+        req.on('timeout', () => {
+          resolve({ error: 'Timeout', message: 'No response in 10 seconds' });
+        });
+        
+        req.on('error', (e) => {
+          resolve({ error: e.message });
+        });
+        
+        req.write(xmlTest);
+        req.end();
+      });
+      
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
 }
 
 
