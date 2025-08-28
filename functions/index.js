@@ -2915,6 +2915,38 @@ exports.testSimplePost = functions
     }
   });
 
+      //シンプルなテスト関数を追加
+      exports.debugBlogTool = functions
+  .region('asia-northeast1')
+  .https.onRequest(async (req, res) => {
+    res.set('Access-Control-Allow-Origin', '*');
+    
+    try {
+      console.log('Starting BlogTool debug...');
+      const BlogTool = require('./lib/blog-tool');
+      console.log('BlogTool loaded');
+      
+      const config = functions.config();
+      console.log('Firebase config:', JSON.stringify(config.wordpress || {}, null, 2));
+      
+      const blogTool = new BlogTool();
+      console.log('BlogTool instantiated');
+      
+      res.json({
+        success: true,
+        wordpressUrl: blogTool.wordpressUrl,
+        hasUser: !!blogTool.wordpressUser,
+        hasPassword: !!blogTool.wordpressPassword
+      });
+    } catch (error) {
+      console.error('Debug error:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  });
+
       // カテゴリーをランダムに選択
       const categories = ['entertainment', 'anime', 'game', 'movie', 'music', 'tech', 'beauty', 'food'];
       const randomCategory = categories[Math.floor(Math.random() * categories.length)];
