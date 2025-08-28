@@ -209,27 +209,26 @@ class BlogTool {
   // WordPressへの投稿（手動XML-RPC）
   // blog-tool.js の postToWordPress関数内（約300行目）
   // blog-tool.js - 超簡略版XML-RPC（300行目付近）
+  // タイムアウトを短くし、詳細なログを追加8/28
 async postToWordPress(article) {
   const https = require('https');
   
   try {
-    console.log('📤 Attempting simplified XML-RPC post...');
+    console.log('📤 Starting WordPress XML-RPC post...');
+    console.log('Target URL:', this.wordpressUrl);
+    console.log('XML-RPC endpoint:', `${this.wordpressUrl}/xmlrpc.php`);
     
-    // ★修正1: articleから必要な値を取得（articleDataではなくarticle）
     const {
       title = '',
       content = '',
       category = 'uncategorized',
       tags = [],
-      isProductReview = false,  // デフォルト値を設定
+      isProductReview = false,
       featuredImageUrl = null
-    } = article;  // ← articleを使用
+    } = article;
     
-    // ★修正2: ログで正しく参照
     console.log('Article type:', isProductReview ? 'Product Review' : 'Regular Post');
-    console.log('🚀 Starting WordPress post...');
     
-    // UTF-8を正しく処理
     const sanitizeForXML = (str) => {
       if (!str) return '';
       return String(str)
@@ -240,7 +239,6 @@ async postToWordPress(article) {
         .replace(/'/g, '&apos;');
     };
     
-    // ★修正3: article.titleとarticle.contentを使用
     const processedTitle = sanitizeForXML(title).substring(0, 100);
     const processedContent = sanitizeForXML(content || '<p>内容</p>');
     
@@ -277,15 +275,84 @@ async postToWordPress(article) {
   </params>
 </methodCall>`;
     
-    // 以降のHTTPリクエスト処理...
+    console.log('XML payload size:', xmlPayload.length, 'bytes');
+    
+    const url = new URL(`${this.wordpressUrl}/xmlrpc.php`);
+    
     return new Promise((resolve) => {
-      // HTTPSリクエストの実装
-      // ...
+      const options = {
+        hostname: url.hostname,
+        port: 443,
+        path: '/xmlrpc.php',
+        method: 'POST',
+        timeout: 30000, // 30秒に短縮
+        headers: {
+          'Content-Type': 'text/xml',
+          'Content-Length': Buffer.byteLength(xmlPayload, 'utf8'),
+          'User-Agent': 'WordPress XML-RPC Client'
+        }
+      };
+      
+      console.log('Request options:', JSON.stringify(options, null, 2));
+      
+      const req = https.request(options, (res) => {
+        console.log('Response status:', res.statusCode);
+        console.log('Response headers:', res.headers);
+        
+        let data = '';
+        res.on('data', chunk => data += chunk);
+        res.on('end', () => {
+          console.log('Response received, length:', data.length);
+          
+          if (res.statusCode === 200) {
+            const idMatch = data.match(/<int>(\d+)<\/int>/);
+            resolve({
+              success: true,
+              postId: idMatch ? idMatch[1] : 'unknown',
+              url: `${this.wordpressUrl}/?p=${idMatch ? idMatch[1] : ''}`,
+              message: 'Posted successfully'
+            });
+          } else {
+            console.error('HTTP Error:', res.statusCode);
+            console.error('Response body:', data.substring(0, 500));
+            resolve({ 
+              success: false, 
+              error: `HTTP ${res.statusCode}`,
+              details: data.substring(0, 200)
+            });
+          }
+        });
+      });
+      
+      req.on('timeout', () => {
+        console.error('Request timeout after 30 seconds');
+        req.destroy();
+        resolve({ 
+          success: false, 
+          error: 'Timeout after 30s',
+          suggestion: 'Check XML-RPC endpoint or WAF settings'
+        });
+      });
+      
+      req.on('error', (e) => {
+        console.error('Request error:', e.message);
+        resolve({ 
+          success: false, 
+          error: e.message 
+        });
+      });
+      
+      console.log('Sending request...');
+      req.write(xmlPayload);
+      req.end();
     });
     
   } catch (error) {
     console.error('❌ WordPress posting error:', error);
-    throw error;
+    return { 
+      success: false, 
+      error: error.message 
+    };
   }
 }
 
