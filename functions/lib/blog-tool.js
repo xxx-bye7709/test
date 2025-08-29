@@ -1,3 +1,4 @@
+// functions/lib/blog-tool.js - 完全版
 const functions = require('firebase-functions');
 const xmlrpc = require('xmlrpc');
 const { OpenAI } = require('openai');
@@ -11,8 +12,8 @@ class BlogTool {
     
     // Firebase configから直接取得（process.envは使わない）
     this.wordpressUrl = config.wordpress?.url || 'https://www.entamade.jp';
-    this.wordpressUser = config.wordpress?.username;  // ← process.envを削除
-    this.wordpressPassword = config.wordpress?.password;  // ← process.envを削除
+    this.wordpressUser = config.wordpress?.username;
+    this.wordpressPassword = config.wordpress?.password;
     this.openaiApiKey = config.openai?.api_key || process.env.OPENAI_API_KEY;
     
     // デバッグ：設定された値を確認
@@ -466,7 +467,7 @@ ${categoryData.topic}について、最新の情報をまとめた魅力的な�
   // 記事生成（カテゴリー別）
   async generateArticle(category = 'entertainment', options = {}) {
     try {
-      console.log(`🔍 Generating ${category} article...`);
+      console.log(`📝 Generating ${category} article...`);
       
       // GPTで本文生成
       const content = await this.generateWithGPT(category, options.template);
@@ -609,7 +610,7 @@ HTMLタグを使用して視覚的に魅力的な記事を生成してくださ�
           .replace(/```\s*\n?/gi, '')
           // 不要な説明文を削除
           .replace(/\*\*この.*?ください。?\*\*/gi, '')
-          .replace(/このHTML.*?ください。?/gi, '')
+          .replace(/この HTML.*?ください。?/gi, '')
           .replace(/このコード.*?ください。?/gi, '')
           .replace(/ぜひご活用ください。?/gi, '')
           .replace(/上記.*?ください。?/gi, '')
