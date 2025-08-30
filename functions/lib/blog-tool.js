@@ -229,6 +229,7 @@ class BlogTool {
         content = '',
         category = 'uncategorized',
         tags = [],
+        products = [],  // ⭐ productsを取得
         isProductReview = false,
         featuredImageUrl = null
       } = article;
@@ -250,7 +251,10 @@ class BlogTool {
 
       // ⭐ アイキャッチ画像のアップロード（250行目付近、xmlPayloadの前に追加）
       let featuredImageId = null;
-      const products = Array.isArray(productData) ? productData : [productData];
+      // articleオブジェクトから商品データを取得
+      const products = Array.isArray(article.products) ? article.products : 
+                 Array.isArray(article.productData) ? article.productData : 
+                 [];
       if (products[0]) {
         const imageUrl = products[0].imageUrl || products[0].imageURL?.large || products[0].imageURL?.small;
         if (imageUrl) {
@@ -299,31 +303,7 @@ class BlogTool {
             <name>post_author</name>
             <value><int>1</int></value>
           </member>
-          <member>
-            <name>terms_names</name>
-            <value>
-              <struct>
-                <member>
-                  <name>category</name>
-                  <value>
-                    <array>
-                      <data>
-                        <value><string>${category}</string></value>
-                      </data>
-                    </array>
-                  </value>
-                </member>
-                <member>
-                  <name>post_tag</name>
-                  <value>
-                    <array>
-                      <data>
-                        ${tags.map(tag => `<value><string>${escapeXML(tag)}</string></value>`).join('')}
-                      </data>
-                    </array>
-                  </value>
-                </member>
-                ${featuredImageId ? `<member>
+          ${featuredImageId ? `<member>
             <name>post_thumbnail</name>
             <value><int>${featuredImageId}</int></value>
           </member>` : ''}
@@ -344,6 +324,20 @@ class BlogTool {
               </struct>
             </value>
           </member>
+          <member>
+            <name>terms_names</name>
+            <value>
+              <struct>
+                <member>
+                  <name>post_tag</name>
+                  <value>
+                    <array>
+                      <data>
+                        ${tags.map(tag => `<value><string>${escapeXML(tag)}</string></value>`).join('')}
+                      </data>
+                    </array>
+                  </value>
+                </member>
               </struct>
             </value>
           </member>
@@ -678,7 +672,8 @@ HTMLタグを使用して視覚的に魅力的な記事を生成してくださ�
           category: 'レビュー',
           tags: [keyword, 'レビュー', '比較', 'おすすめ', `${new Date().getFullYear()}年`],
           status: 'draft',
-          isProductReview: true
+          isProductReview: true,
+          products: products  // ⭐ これを追加
         };
       }
       
@@ -705,7 +700,8 @@ HTMLタグを使用して視覚的に魅力的な記事を生成してくださ�
         category: 'レビュー',
         tags: [keyword, 'まとめ'],
         status: 'draft',
-        isProductReview: true
+        isProductReview: true,
+        products: products  // ⭐ これを追加
       };
       
     } catch (error) {
