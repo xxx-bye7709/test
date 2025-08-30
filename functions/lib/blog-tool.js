@@ -734,9 +734,6 @@ HTMLタグを使用して視覚的に魅力的な記事を生成してくださ�
     
     return tags.slice(0, 10); // 最大10個まで
   }
-}  // BlogToolクラスの閉じ括弧
-
-// ========== 画像とカテゴリー機能の追加 ==========
 
   async uploadImageToWordPress(imageUrl, filename = 'product-image.jpg') {
     if (!imageUrl || imageUrl === '') {
