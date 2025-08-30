@@ -251,10 +251,6 @@ class BlogTool {
 
       // ⭐ アイキャッチ画像のアップロード（250行目付近、xmlPayloadの前に追加）
       let featuredImageId = null;
-      // articleオブジェクトから商品データを取得
-      const products = Array.isArray(article.products) ? article.products : 
-                 Array.isArray(article.productData) ? article.productData : 
-                 [];
       if (products[0]) {
         const imageUrl = products[0].imageUrl || products[0].imageURL?.large || products[0].imageURL?.small;
         if (imageUrl) {
