@@ -247,7 +247,27 @@ class BlogTool {
       };
       
       const processedTitle = escapeXML(title).substring(0, 200);
-      
+
+      // ⭐ アイキャッチ画像のアップロード（250行目付近、xmlPayloadの前に追加）
+      let featuredImageId = null;
+      const products = Array.isArray(productData) ? productData : [productData];
+      if (products[0]) {
+        const imageUrl = products[0].imageUrl || products[0].imageURL?.large || products[0].imageURL?.small;
+        if (imageUrl) {
+          const uploadResult = await this.uploadImageToWordPress(imageUrl, `featured-${Date.now()}.jpg`);
+          if (uploadResult) {
+            featuredImageId = uploadResult.id;
+          }
+        }
+      }
+
+      // ⭐ カテゴリーの判定
+      const categoryId = this.determineCategory(products, title);
+      console.log(`📁 Category ID: ${categoryId}`);
+
+      // ⭐ 既存のXML（253行目からのxmlPayload）を修正
+      // post_thumbnailとtermsを追加
+
       // HTMLコンテンツはCDATAセクションで囲む
       const xmlPayload = `<?xml version="1.0" encoding="UTF-8"?>
 <methodCall>
@@ -303,6 +323,27 @@ class BlogTool {
                     </array>
                   </value>
                 </member>
+                ${featuredImageId ? `<member>
+            <name>post_thumbnail</name>
+            <value><int>${featuredImageId}</int></value>
+          </member>` : ''}
+          <member>
+            <name>terms</name>
+            <value>
+              <struct>
+                <member>
+                  <name>category</name>
+                  <value>
+                    <array>
+                      <data>
+                        <value><int>${categoryId}</int></value>
+                      </data>
+                    </array>
+                  </value>
+                </member>
+              </struct>
+            </value>
+          </member>
               </struct>
             </value>
           </member>
@@ -694,5 +735,104 @@ HTMLタグを使用して視覚的に魅力的な記事を生成してくださ�
     return tags.slice(0, 10); // 最大10個まで
   }
 }  // BlogToolクラスの閉じ括弧
+
+// ========== 画像とカテゴリー機能の追加 ==========
+
+  async uploadImageToWordPress(imageUrl, filename = 'product-image.jpg') {
+    if (!imageUrl || imageUrl === '') {
+      console.log('No image URL provided');
+      return null;
+    }
+
+    try {
+      console.log(`📸 Uploading image: ${imageUrl}`);
+      const fetch = require('node-fetch');
+      
+      const imageResponse = await fetch(imageUrl);
+      if (!imageResponse.ok) {
+        console.error('Failed to fetch image');
+        return null;
+      }
+
+      const imageBuffer = await imageResponse.buffer();
+      const base64Image = imageBuffer.toString('base64');
+
+      const uploadXml = `<?xml version="1.0" encoding="UTF-8"?>
+<methodCall>
+  <methodName>wp.uploadFile</methodName>
+  <params>
+    <param><value><int>1</int></value></param>
+    <param><value><string>${this.wordpressUser}</string></value></param>
+    <param><value><string>${this.wordpressPassword}</string></value></param>
+    <param>
+      <value>
+        <struct>
+          <member>
+            <name>name</name>
+            <value><string>${filename}</string></value>
+          </member>
+          <member>
+            <name>type</name>
+            <value><string>image/jpeg</string></value>
+          </member>
+          <member>
+            <name>bits</name>
+            <value><base64>${base64Image}</base64></value>
+          </member>
+        </struct>
+      </value>
+    </param>
+  </params>
+</methodCall>`;
+
+      const response = await fetch(`${this.wordpressUrl}/xmlrpc.php`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/xml',
+          'Content-Length': Buffer.byteLength(uploadXml)
+        },
+        body: uploadXml
+      });
+
+      const responseText = await response.text();
+      const idMatch = responseText.match(/<member><name>id<\/name><value><(?:int|string)>(\d+)<\/(?:int|string)>/);
+      
+      if (idMatch) {
+        console.log(`✅ Image uploaded: ID=${idMatch[1]}`);
+        return { id: parseInt(idMatch[1]) };
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Image upload error:', error);
+      return null;
+    }
+  }
+
+  determineCategory(products, title = '') {
+    const categoryMap = {
+      'アニメ': 3,
+      'ゲーム': 4, 
+      '映画': 5,
+      '音楽': 6,
+      'アイドル': 7,
+      'グラビア': 8,
+      'アダルト': 9,
+      'エンタメ': 2
+    };
+
+    const text = (title + ' ' + products.map(p => p.title || '').join(' ')).toLowerCase();
+    
+    if (text.includes('アニメ') || text.includes('anime')) return categoryMap['アニメ'];
+    if (text.includes('ゲーム') || text.includes('game')) return categoryMap['ゲーム'];
+    if (text.includes('映画') || text.includes('movie')) return categoryMap['映画'];
+    if (text.includes('アイドル') || text.includes('idol')) return categoryMap['アイドル'];
+    if (text.includes('グラビア')) return categoryMap['グラビア'];
+    if (text.includes('アダルト') || text.includes('18')) return categoryMap['アダルト'];
+    
+    return categoryMap['エンタメ'];
+  }
+
+// ========== 追加ここまで ==========
 
 module.exports = BlogTool;
