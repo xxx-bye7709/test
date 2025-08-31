@@ -1736,12 +1736,17 @@ exports.generateProductReview = functions
       
       const requestData = req.body || {};
       
-      const { 
-        productId = 'test',
+      const {
+        products = [],  // ⭐ 複数商品配列に変更
         keyword = 'レビュー',
-        autoPost = true,
-        productData = {}
+        autoPost = true
       } = requestData;
+
+      // 後方互換性のため、productDataも確認
+      const productsToProcess = products.length > 0 ? products : 
+                         requestData.productData ? [requestData.productData] : [];
+
+      console.log(`📦 Processing ${productsToProcess.length} products`);
       
       console.log('Product data received:', {
         hasTitle: !!productData.title,
@@ -1752,10 +1757,10 @@ exports.generateProductReview = functions
       
       // 記事生成
       const article = await blogTool.generateProductReview(
-        productData,
-        keyword,
-        { autoPost }
-      );
+        productsToProcess,  // 配列を渡す
+          keyword,
+          { autoPost }
+        );
       
       // ★強化されたクリーンアップ処理
       if (article.content) {
