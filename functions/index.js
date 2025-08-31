@@ -1795,7 +1795,7 @@ exports.generateProductReview = functions
         
         const imageHtml = `
 <div class="product-main-image" style="text-align: center; margin: 30px 0;">
-  <img src="${imageUrl}" alt="${productData.title || keyword}" 
+  <img src="${imageUrl}" alt="${productsToProcess[0]?.title || keyword}" 
        style="max-width: 600px; width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
 </div>`;
         
@@ -1811,11 +1811,11 @@ exports.generateProductReview = functions
           article.content = imageHtml + '\n\n' + article.content;
         }
       } else {
-        console.log('⚠️ No image URL provided in productData');
+        console.log('⚠️ No image URL provided');
       }
       
       // ★アフィリエイトボタン（複数箇所に配置）
-      const affiliateUrl = productData.affiliateUrl || productData.affiliateURL || productData.url;
+      const affiliateUrl = productsToProcess[0]?.affiliateUrl || productsToProcess[0]?.affiliateURL || productsToProcess[0]?.url;
       if (affiliateUrl) {
         // 記事中央のボタン
         const midButtonHtml = `
