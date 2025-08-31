@@ -3101,5 +3101,3 @@ function generateArticleContent(products, articleType, keyword) {
       hasOpenAI: !!config.openai?.api_key
     });
   });
-
-
