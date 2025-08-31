@@ -1749,11 +1749,11 @@ exports.generateProductReview = functions
       console.log(`📦 Processing ${productsToProcess.length} products`);
       
       console.log('Product data received:', {
-        hasTitle: !!productData.title,
-        hasPrice: !!productData.price,
-        hasImageUrl: !!productData.imageUrl,  // ★画像URL確認
-        hasAffiliateUrl: !!productData.affiliateUrl
-      });
+  hasTitle: !!productsToProcess[0]?.title,
+  hasPrice: !!productsToProcess[0]?.price,
+  hasImageUrl: !!productsToProcess[0]?.imageUrl,
+  hasAffiliateUrl: !!productsToProcess[0]?.affiliateUrl
+});
       
       // 記事生成
       const article = await blogTool.generateProductReview(
