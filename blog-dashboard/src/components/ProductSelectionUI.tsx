@@ -166,7 +166,7 @@ export default function ProductSelectionUI() {
                         <img 
                           src={product.imageURL.small} 
                           alt={product.title}
-                          className="w-full h-48 object-cover rounded-md mb-2"
+                          className="w-24 h-24 object-cover rounded-md mr-3 flex-shrink-0"
                           onError={(e) => {
                             e.currentTarget.src = 'https://via.placeholder.com/300x200?text=No+Image';
                           }}
