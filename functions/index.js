@@ -1761,6 +1761,12 @@ exports.generateProductReview = functions
           keyword,
           { autoPost }
         );
+
+      // 複数商品のHTMLセクションを生成して追加
+      if (productsToProcess.length > 0) {
+        const productHTML = generateProductSection(productsToProcess, 'review');
+        article.content = article.content + '\n\n' + productHTML;
+      }
       
       // ★強化されたクリーンアップ処理
       if (article.content) {
