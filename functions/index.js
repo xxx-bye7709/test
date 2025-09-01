@@ -1742,9 +1742,9 @@ exports.generateProductReview = functions
         autoPost = true
       } = requestData;
 
-      // 後方互換性のため、productDataも確認
+      // 後方互換性のため、productsToProcess[0]?も確認
       const productsToProcess = products.length > 0 ? products : 
-                         requestData.productData ? [requestData.productData] : [];
+                         requestData.product ? [requestData.product] : [];
 
       console.log(`📦 Processing ${productsToProcess.length} products`);
       
@@ -1883,8 +1883,8 @@ if (imageUrl) {
       }
       
       // タグ・カテゴリの設定
-      article.category = productData.category || 'products';
-      article.tags = [keyword, productData.genre, productData.maker].filter(Boolean);
+      article.category = productsToProcess[0].category || 'products';
+      article.tags = [keyword, productsToProcess[0].genre, productsToProcess[0].maker].filter(Boolean);
       
       console.log('Article processed:', {
         title: article.title,
@@ -1908,7 +1908,7 @@ if (imageUrl) {
         success: true,
         title: article.title,
         keyword: keyword,
-        productId: productId,
+        productId: productsToProcess[0]?.content_id || productsToProcess[0]?.id || "unknown",
         postId: postResult.postId || null,
         postUrl: postResult.url || null,
         postSuccess: postResult.success || false,
@@ -3106,3 +3106,4 @@ function generateArticleContent(products, articleType, keyword) {
       hasOpenAI: !!config.openai?.api_key
     });
   });
+
