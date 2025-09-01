@@ -1789,11 +1789,11 @@ exports.generateProductReview = functions
       }
       
       // ★画像URLが存在する場合のみ画像を挿入
-      const imageUrl = productData.imageUrl || productData.imageURL || productData.image;
-      if (imageUrl) {
-        console.log('Inserting image:', imageUrl);
-        
-        const imageHtml = `
+      const imageUrl = productsToProcess[0]?.imageUrl || productsToProcess[0]?.imageURL || productsToProcess[0]?.image;  // ← 修正！
+if (imageUrl) {
+  console.log('Inserting image:', imageUrl);
+  
+  const imageHtml = `
 <div class="product-main-image" style="text-align: center; margin: 30px 0;">
   <img src="${imageUrl}" alt="${productsToProcess[0]?.title || keyword}" 
        style="max-width: 600px; width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
