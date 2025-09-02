@@ -298,8 +298,8 @@ export default function SchedulePage() {
               </div>
               <input
                 type="number"
-                value={config.maxPostsPerDay}
-                onChange={(e) => setConfig(prev => ({ ...prev, maxPostsPerDay: parseInt(e.target.value) }))}
+                value={config.maxDailyPosts}
+                onChange={(e) => setConfig(prev => ({ ...prev, maxDailyPosts: parseInt(e.target.value) }))}
                 min="1"
                 max="48"
                 className="w-full px-4 py-3 bg-gray-900/50 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
@@ -369,7 +369,7 @@ export default function SchedulePage() {
                     </span>
                   </div>
                   <div className="text-sm text-gray-500">
-                    {intervalOptions[config.interval].label} × 上限{config.maxPostsPerDay}記事
+                    {intervalOptions[config.interval].label} × 上限{config.maxDailyPosts}記事
                   </div>
                 </div>
 
