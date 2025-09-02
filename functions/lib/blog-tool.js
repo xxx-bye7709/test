@@ -631,9 +631,25 @@ HTMLタグを使用して視覚的に魅力的な記事を生成してくださ�
         
         console.log('OpenAI response length:', completion.choices[0].message.content.length);
 
-        // OpenAI response length:の後、577行目付近に追加
+        // completionからcontentを取得してクリーンアップ
+let content = completion.choices[0].message.content || '';
 
-// ★★★ 全商品の画像とリンクを含むHTMLセクションを生成 ★★★
+// クリーンアップ処理
+content = content
+  .replace(/```html\s*\n?/gi, '')
+  .replace(/```\s*\n?/gi, '')
+  .replace(/\*\*この.*?ください。?\*\*/gi, '')
+  .replace(/このHTML.*?ください。?/gi, '')
+  .replace(/このコード.*?ください。?/gi, '')
+  .replace(/ぜひご活用ください。?/gi, '')
+  .replace(/上記.*?ください。?/gi, '')
+  .replace(/以上.*?ください。?/gi, '')
+  .replace(/以下.*?活用.*?。?/gi, '')
+  .replace(/\n{3,}/g, '\n\n')
+  .replace(/^\s*$/gm, '')
+  .trim();
+
+// ★★★ contentが定義された後に商品セクションを追加 ★★★
 const productsSectionHTML = `
 <h2 style="margin-top: 40px; color: #333;">📦 紹介商品詳細</h2>
 <div class="products-gallery">
@@ -660,11 +676,6 @@ ${products.map((product, index) => {
     <p style="font-size: 1.4em; color: #e74c3c; font-weight: bold; margin: 10px 0;">
       💰 価格: ${price}
     </p>
-    ${product.genre ? `<p>📂 <strong>ジャンル:</strong> ${product.genre}</p>` : ''}
-    ${product.maker ? `<p>🏢 <strong>メーカー:</strong> ${product.maker}</p>` : ''}
-    ${product.actress ? `<p>👤 <strong>出演:</strong> ${product.actress}</p>` : ''}
-    ${product.description ? `<p>📝 <strong>説明:</strong> ${product.description}</p>` : ''}
-    ${product.rating ? `<p>⭐ <strong>評価:</strong> ${product.rating}/5</p>` : ''}
   </div>
   
   <div style="text-align: center; margin-top: 25px;">
@@ -678,9 +689,7 @@ ${products.map((product, index) => {
               text-decoration: none; 
               border-radius: 50px; 
               font-size: 1.1em; 
-              font-weight: bold; 
-              box-shadow: 0 4px 15px rgba(76,175,80,0.3);
-              transition: transform 0.3s;">
+              font-weight: bold;">
       🛒 詳細を見る・購入する
     </a>
   </div>
@@ -688,45 +697,13 @@ ${products.map((product, index) => {
 `;
 }).join('\n')}
 </div>
-
-<div style="margin-top: 40px; padding: 20px; background: #e3f2fd; border-radius: 10px; border: 2px solid #2196F3;">
-  <h4 style="color: #1976D2; margin-top: 0;">💡 ご購入前のご案内</h4>
-  <ul style="color: #555; line-height: 1.8;">
-    <li>価格や在庫状況は変動する場合があります</li>
-    <li>詳細情報は各商品ページでご確認ください</li>
-    <li>複数購入で送料がお得になる場合があります</li>
-  </ul>
-</div>
 `;
 
-// contentにproductsSectionHTMLを追加
+// contentに商品セクションを追加
 content = content + '\n\n' + productsSectionHTML;
-        
-        // completionからcontentを取得してクリーンアップ
-        let content = completion.choices[0].message.content || '';
-        
-        // クリーンアップ処理
-        content = content
-          // HTMLコードブロックマーカーを削除
-          .replace(/```html\s*\n?/gi, '')
-          .replace(/```\s*\n?/gi, '')
-          // 不要な説明文を削除
-          .replace(/\*\*この.*?ください。?\*\*/gi, '')
-          .replace(/この HTML.*?ください。?/gi, '')
-          .replace(/このコード.*?ください。?/gi, '')
-          .replace(/ぜひご活用ください。?/gi, '')
-          .replace(/上記.*?ください。?/gi, '')
-          .replace(/以上.*?ください。?/gi, '')
-          .replace(/以下.*?活用.*?。?/gi, '')
-          // 連続する改行を2つまでに制限
-          .replace(/\n{3,}/g, '\n\n')
-          // 空白のみの行を削除
-          .replace(/^\s*$/gm, '')
-          // 最初と最後の空白を削除
-          .trim();
-        
-        // タイトル生成
-        const reviewCount = products[0].reviewCount || products[0].review?.count || '364';
+
+// タイトル生成（既存のコード）
+const reviewCount = products[0].reviewCount || products[0].review?.count || '364';
         const title = products.length > 1 ? 
           `【${products.length}選】${keyword}のおすすめ商品を徹底比較！${new Date().getFullYear()}年最新版` :
           `【${reviewCount}人が購入】${products[0].title?.substring(0, 30)}...の詳細レビュー｜${keyword}`;
