@@ -630,6 +630,77 @@ HTMLタグを使用して視覚的に魅力的な記事を生成してくださ�
         });
         
         console.log('OpenAI response length:', completion.choices[0].message.content.length);
+
+        // OpenAI response length:の後、577行目付近に追加
+
+// ★★★ 全商品の画像とリンクを含むHTMLセクションを生成 ★★★
+const productsSectionHTML = `
+<h2 style="margin-top: 40px; color: #333;">📦 紹介商品詳細</h2>
+<div class="products-gallery">
+${products.map((product, index) => {
+  const imageUrl = product.imageUrl || product.imageURL || product.image || '';
+  const affiliateUrl = product.affiliateUrl || product.affiliateURL || product.url || '#';
+  const price = product.price || product.prices?.price || '価格不明';
+  
+  return `
+<div style="margin: 30px 0; padding: 25px; border: 2px solid #4CAF50; border-radius: 12px; background: #f9f9f9;">
+  <h3 style="color: #2c3e50; font-size: 1.3em; margin-bottom: 15px;">
+    【商品${index + 1}】${product.title || '商品名'}
+  </h3>
+  
+  ${imageUrl ? `
+  <div style="text-align: center; margin: 20px 0;">
+    <img src="${imageUrl}" 
+         alt="${product.title || '商品画像'}" 
+         style="max-width: 100%; max-height: 400px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+  </div>
+  ` : ''}
+  
+  <div style="background: white; padding: 15px; border-radius: 8px; margin: 15px 0;">
+    <p style="font-size: 1.4em; color: #e74c3c; font-weight: bold; margin: 10px 0;">
+      💰 価格: ${price}
+    </p>
+    ${product.genre ? `<p>📂 <strong>ジャンル:</strong> ${product.genre}</p>` : ''}
+    ${product.maker ? `<p>🏢 <strong>メーカー:</strong> ${product.maker}</p>` : ''}
+    ${product.actress ? `<p>👤 <strong>出演:</strong> ${product.actress}</p>` : ''}
+    ${product.description ? `<p>📝 <strong>説明:</strong> ${product.description}</p>` : ''}
+    ${product.rating ? `<p>⭐ <strong>評価:</strong> ${product.rating}/5</p>` : ''}
+  </div>
+  
+  <div style="text-align: center; margin-top: 25px;">
+    <a href="${affiliateUrl}" 
+       target="_blank" 
+       rel="noopener noreferrer"
+       style="display: inline-block; 
+              padding: 15px 50px; 
+              background: linear-gradient(45deg, #4CAF50, #45a049); 
+              color: white; 
+              text-decoration: none; 
+              border-radius: 50px; 
+              font-size: 1.1em; 
+              font-weight: bold; 
+              box-shadow: 0 4px 15px rgba(76,175,80,0.3);
+              transition: transform 0.3s;">
+      🛒 詳細を見る・購入する
+    </a>
+  </div>
+</div>
+`;
+}).join('\n')}
+</div>
+
+<div style="margin-top: 40px; padding: 20px; background: #e3f2fd; border-radius: 10px; border: 2px solid #2196F3;">
+  <h4 style="color: #1976D2; margin-top: 0;">💡 ご購入前のご案内</h4>
+  <ul style="color: #555; line-height: 1.8;">
+    <li>価格や在庫状況は変動する場合があります</li>
+    <li>詳細情報は各商品ページでご確認ください</li>
+    <li>複数購入で送料がお得になる場合があります</li>
+  </ul>
+</div>
+`;
+
+// contentにproductsSectionHTMLを追加
+content = content + '\n\n' + productsSectionHTML;
         
         // completionからcontentを取得してクリーンアップ
         let content = completion.choices[0].message.content || '';
@@ -834,3 +905,4 @@ HTMLタグを使用して視覚的に魅力的な記事を生成してくださ�
 }
 
 module.exports = BlogTool;
+
