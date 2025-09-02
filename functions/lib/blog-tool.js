@@ -261,6 +261,19 @@ class BlogTool {
         }
       }
 
+      // 261行目の } の後、262行目の // ⭐ カテゴリーの判定 の前に追加
+      else if (article.featuredImageUrl) {
+        console.log('📸 Uploading featured image for article...');
+        const uploadResult = await this.uploadImageToWordPress(
+          article.featuredImageUrl, 
+          `article-featured-${Date.now()}.jpg`
+        );
+        if (uploadResult) {
+          featuredImageId = uploadResult.id;
+          console.log('✅ Featured image ID:', featuredImageId);
+        }
+      }
+
       // ⭐ カテゴリーの判定
       const categoryId = this.determineCategory(products, title);
       console.log(`📁 Category ID: ${categoryId}`);
@@ -535,7 +548,7 @@ ${categoryData.topic}について、最新の情報をまとめた魅力的な�
     let featuredImageUrl = null;
     
     // 画像生成を有効にする（デフォルトは有効）
-    if (options.includeImage !== false) {
+    if (true) {
       try {
         const ImageGenerator = require('./image-generator');
         const imageGen = new ImageGenerator(this.openaiApiKey);
@@ -913,4 +926,5 @@ const reviewCount = products[0].reviewCount || products[0].review?.count || '364
 }
 
 module.exports = BlogTool;
+
 
