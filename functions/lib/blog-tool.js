@@ -12,8 +12,8 @@ class BlogTool {
     
     // Firebase configから直接取得（process.envは使わない）
     this.wordpressUrl = config.wordpress?.url || 'https://www.entamade.jp';
-    this.wordpressUser = config.wordpress?.username;
-    this.wordpressPassword = config.wordpress?.password;
+    this.wordpressUser = config.wordpress?.username || 'entamade';
+    this.wordpressPassword = config.wordpress?.password || 'IChL 1yMu 4OUF YpL6 Wz8d oxln"';
     this.openaiApiKey = config.openai?.api_key || process.env.OPENAI_API_KEY;
     
     // デバッグ：設定された値を確認
