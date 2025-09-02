@@ -497,53 +497,84 @@ ${categoryData.topic}について、最新の情報をまとめた魅力的な�
 
   // 記事生成（カテゴリー別）
   async generateArticle(category = 'entertainment', options = {}) {
-    try {
-      console.log(`📝 Generating ${category} article...`);
-      
-      // GPTで本文生成
-      const content = await this.generateWithGPT(category, options.template);
-      
-      // タイトル生成
-      const categoryData = this.templates[category] || this.templates.entertainment;
-      const titlePrompt = `
+  try {
+    console.log(`📝 Generating ${category} article...`);
+    
+    // GPTで本文生成
+    const content = await this.generateWithGPT(category, options.template);
+    
+    // タイトル生成
+    const categoryData = this.templates[category] || this.templates.entertainment;
+    const titlePrompt = `
 「${categoryData.topic}」について、SEOに強い魅力的な記事タイトルを1つ生成してください。
 要件：
 - 30-50文字程度
 - キャッチーで興味を引く
 - 具体的な内容を示唆する
 タイトルのみを出力してください。`;
-      
-      const titleCompletion = await this.openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "user",
-            content: titlePrompt
-          }
-        ],
-        temperature: 0.8,
-        max_tokens: 100
-      });
-
-      const title = titleCompletion.choices[0]?.message?.content?.trim() || `${category}の最新情報`;
-      
-      console.log('✅ Article generated successfully');
-      console.log('Title:', title);
-      console.log('Content length:', content.length);
-      
-      return {
-        title: title,
-        content: content,
-        category: category,
-        tags: this.optimizeTags([], category),
-        status: options.status || 'publish'
-      };
-      
-    } catch (error) {
-      console.error('❌ Error generating article:', error);
-      throw error;
+    
+    const titleCompletion = await this.openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "user",
+          content: titlePrompt
+        }
+      ],
+      temperature: 0.8,
+      max_tokens: 100
+    });
+    const title = titleCompletion.choices[0]?.message?.content?.trim() || `${category}の最新情報`;
+    
+    console.log('✅ Article generated successfully');
+    console.log('Title:', title);
+    console.log('Content length:', content.length);
+    
+    // ===== 画像生成を追加（ここから） =====
+    let finalContent = content;
+    let featuredImageUrl = null;
+    
+    // 画像生成を有効にする（デフォルトは有効）
+    if (options.includeImage !== false) {
+      try {
+        const ImageGenerator = require('./image-generator');
+        const imageGen = new ImageGenerator(this.openaiApiKey);
+        
+        // カテゴリーに応じた画像プロンプト
+        const imagePrompt = `Professional blog header image for ${category} article: "${title}". Modern, vibrant, high quality, digital art style, no text.`;
+        
+        console.log('🎨 Generating featured image...');
+        featuredImageUrl = await imageGen.generateImage(imagePrompt, '1792x1024', 'standard');
+        
+        if (featuredImageUrl) {
+          console.log('✅ Featured image generated');
+          // 記事の先頭に画像を挿入
+          const imageHtml = `<div style="text-align: center; margin: 20px 0;">
+<img src="${featuredImageUrl}" alt="${title}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+</div>\n\n`;
+          finalContent = imageHtml + content;
+        }
+      } catch (imageError) {
+        console.error('⚠️ Image generation failed, continuing without image:', imageError.message);
+        // 画像生成に失敗しても記事投稿は続行
+      }
     }
+    // ===== 画像生成を追加（ここまで） =====
+    
+    return {
+      title: title,
+      content: finalContent,  // contentをfinalContentに変更
+      category: category,
+      tags: this.optimizeTags([], category),
+      status: options.status || 'publish',
+      featuredImageUrl: featuredImageUrl  // 画像URLも返す
+    };
+    
+  } catch (error) {
+    console.error('❌ Error generating article:', error);
+    throw error;
   }
+}
 
   // 商品レビュー記事生成
   async generateProductReview(productData, keyword, options = {}) {
