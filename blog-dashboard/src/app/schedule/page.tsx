@@ -203,9 +203,9 @@ export default function SchedulePage() {
   };
 
   const calculateDailyPosts = () => {
-    const basePostsPerDay = intervalOptions[config.interval].maxPosts;
-    return Math.min(basePostsPerDay, config.maxPostsPerDay);
-  };
+  const basePostsPerDay = intervalOptions[config.interval].maxPosts;
+  return Math.min(basePostsPerDay, config.maxDailyPosts);  // maxPostsPerDay → maxDailyPosts
+};
 
   const calculatePostsPerCategory = () => {
     const dailyPosts = calculateDailyPosts();
