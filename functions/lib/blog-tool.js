@@ -456,13 +456,19 @@ class BlogTool {
     }
   }
 
-  // GPTを使った記事生成（汎用）
-  async generateWithGPT(category, template) {
-    try {
-      const categoryData = this.templates[category] || this.templates.entertainment;
-      
-      const prompt = `
-${categoryData.topic}について、最新の情報をまとめた魅力的なブログ記事を作成してください。
+  // generateWithGPTメソッドを修正
+async generateWithGPT(category, template) {
+  try {
+    const categoryData = this.templates[category] || this.templates.entertainment;
+    
+    // 現在の日付を取得
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1;
+    
+    const prompt = `
+現在は${year}年${month}月です。
+${categoryData.topic}について、${year}年${month}月時点の最新情報や話題を含む魅力的なブログ記事を作成してください。
 
 要件:
 1. 1500-2000文字程度
@@ -471,7 +477,8 @@ ${categoryData.topic}について、最新の情報をまとめた魅力的な�
 4. コードブロックの記号（\`\`\`）は使わない
 5. SEOを意識した構成
 6. 読者の興味を引く内容
-7. 具体的な情報を含める
+7. ${year}年の具体的な情報を含める
+8. 「${year}年」という表記を適切に使用する
 
 構成:
 - 導入部分（なぜ今この話題が重要か）
@@ -517,11 +524,15 @@ ${categoryData.topic}について、最新の情報をまとめた魅力的な�
     const content = await this.generateWithGPT(category, options.template);
     
     // タイトル生成
-    const categoryData = this.templates[category] || this.templates.entertainment;
-    const titlePrompt = `
-「${categoryData.topic}」について、SEOに強い魅力的な記事タイトルを1つ生成してください。
+    const year = new Date().getFullYear();
+const month = new Date().getMonth() + 1;
+
+const titlePrompt = `
+現在は${year}年${month}月です。
+「${categoryData.topic}」について、${year}年のSEOに強い魅力的な記事タイトルを1つ生成してください。
 要件：
 - 30-50文字程度
+- 「${year}年」または「${year}年${month}月」を含める
 - キャッチーで興味を引く
 - 具体的な内容を示唆する
 タイトルのみを出力してください。`;
@@ -926,5 +937,6 @@ const reviewCount = products[0].reviewCount || products[0].review?.count || '364
 }
 
 module.exports = BlogTool;
+
 
 
