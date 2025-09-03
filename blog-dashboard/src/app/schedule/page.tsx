@@ -202,18 +202,6 @@ export default function SchedulePage() {
     'daily': { label: '1日1回', maxPosts: 1 }
   };
 
-  const calculateDailyPosts = () => {
-  const basePostsPerDay = intervalOptions[config.interval].maxPosts;
-  return Math.min(basePostsPerDay, config.maxDailyPosts);  // maxPostsPerDay → maxDailyPosts
-};
-
-  const calculatePostsPerCategory = () => {
-    const dailyPosts = calculateDailyPosts();
-    const categoryCount = config.categories.length;
-    if (categoryCount === 0) return 0;
-    return Math.floor(dailyPosts / categoryCount);
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
       {/* ヘッダー */}
@@ -310,104 +298,91 @@ export default function SchedulePage() {
             </div>
 
             {/* カテゴリー選択 */}
-            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700 p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <RotateCw className="w-5 h-5 text-purple-400" />
-                <h3 className="text-lg font-semibold">カテゴリーローテーション</h3>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                {allCategories.map(category => (
-                  <label
-                    key={category}
-                    className={`relative cursor-pointer transition-all ${
-                      config.categories.includes(category) ? 'scale-105' : ''
-                    }`}
-                  >
-                    <input
-                      type="number"
-                      value={config.maxDailyPosts}  // maxPostsPerDay → maxDailyPosts
-                      onChange={(e) => setConfig(prev => ({ 
-                        ...prev, 
-                        maxDailyPosts: parseInt(e.target.value) || 1  // NaN防止
-                      }))}
-                      min="1"
-                      max="48"
-                      className="..."
-                    />
-                    <div className={`p-3 rounded-lg border transition-all flex items-center gap-2 ${
-                      config.categories.includes(category)
-                        ? `bg-gradient-to-r ${categoryColors[category]} border-transparent text-white`
-                        : 'bg-gray-900/50 border-gray-700 text-gray-400 hover:border-gray-600'
-                    }`}>
-                      <span className="text-xl">{categoryIcons[category]}</span>
-                      <span className="font-medium">{categoryLabels[category]}</span>
-                    </div>
-                  </label>
-                ))}
-              </div>
-              <p className="text-gray-400 text-sm mt-4">
-                選択したカテゴリーを順番に投稿します
-              </p>
-            </div>
+<div className="bg-gray-800/50 backdrop-blur-sm rounded-xl border border-gray-700 p-6">
+  <div className="flex items-center gap-2 mb-4">
+    <RotateCw className="w-5 h-5 text-purple-400" />
+    <h3 className="text-lg font-semibold">自動投稿カテゴリー</h3>
+  </div>
+  <div className="grid grid-cols-2 gap-3">
+    {allCategories.map(category => (
+      <label
+        key={category}
+        className="cursor-pointer"
+      >
+        <input
+          type="checkbox"
+          checked={config.categories.includes(category)}
+          onChange={() => handleCategoryToggle(category)}
+          className="sr-only"
+        />
+        <div className={`p-3 rounded-lg border transition-all flex items-center gap-2 ${
+          config.categories.includes(category)
+            ? 'bg-blue-600 border-blue-500 text-white'
+            : 'bg-gray-700 border-gray-600 text-gray-400 hover:border-gray-500'
+        }`}>
+          <span className="text-xl">{categoryIcons[category]}</span>
+          <span className="font-medium">{categoryLabels[category]}</span>
+        </div>
+      </label>
+    ))}
+  </div>
+  <p className="text-gray-400 text-sm mt-4">
+    選択したカテゴリーを順番に投稿します
+  </p>
+</div>
           </div>
 
           {/* 右側：プレビューと統計 */}
           <div className="space-y-6">
             {/* 投稿プレビュー */}
-            <div className="bg-gradient-to-br from-blue-900/30 to-purple-900/30 backdrop-blur-sm rounded-xl border border-blue-700/50 p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <Info className="w-5 h-5 text-blue-400" />
-                <h3 className="text-lg font-semibold">投稿スケジュール予測</h3>
-              </div>
+<div className="bg-gradient-to-br from-blue-900/30 to-purple-900/30 backdrop-blur-sm rounded-xl border border-blue-700/50 p-6">
+  <div className="flex items-center gap-2 mb-4">
+    <Info className="w-5 h-5 text-blue-400" />
+    <h3 className="text-lg font-semibold">投稿設定</h3>
+  </div>
 
-              <div className="space-y-4">
-                <div className="bg-gray-900/50 rounded-lg p-4">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-gray-400">実際の1日の投稿数</span>
-                    <span className="text-2xl font-bold">
-                      {calculateDailyPosts()}記事
-                    </span>
-                  </div>
-                  <div className="text-sm text-gray-500">
-                    {intervalOptions[config.interval].label} × 上限{config.maxDailyPosts}記事
-                  </div>
-                </div>
+  <div className="space-y-4">
+    <div className="bg-gray-900/50 rounded-lg p-4">
+      <div className="flex justify-between items-center">
+        <span className="text-gray-400">投稿間隔</span>
+        <span className="text-white font-medium">
+          {intervalOptions[config.interval].label}
+        </span>
+      </div>
+    </div>
 
-                {config.categories.length > 0 && (
-                  <div className="bg-gray-900/50 rounded-lg p-4">
-                    <div className="mb-3">
-                      <span className="text-gray-400 text-sm">カテゴリー別投稿数（1日あたり）</span>
-                    </div>
-                    <div className="space-y-2">
-                      {config.categories.map(category => (
-                        <div key={category} className="flex justify-between items-center">
-                          <div className="flex items-center gap-2">
-                            <span>{categoryIcons[category]}</span>
-                            <span className="text-gray-300">{categoryLabels[category]}</span>
-                          </div>
-                          <span className="text-white font-medium">
-                            約{calculatePostsPerCategory()}記事
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-3 pt-3 border-t border-gray-700">
-                      <p className="text-xs text-gray-500">
-                        ※ カテゴリーは順番にローテーションされます
-                      </p>
-                    </div>
-                  </div>
-                )}
+    <div className="bg-gray-900/50 rounded-lg p-4">
+      <div className="flex justify-between items-center">
+        <span className="text-gray-400">1日の最大投稿数</span>
+        <span className="text-white font-medium">
+          {config.maxDailyPosts}記事
+        </span>
+      </div>
+    </div>
 
-                {config.categories.length === 0 && (
-                  <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
-                    <p className="text-yellow-400 text-sm">
-                      ⚠️ カテゴリーを最低1つ選択してください
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
+    <div className="bg-gray-900/50 rounded-lg p-4">
+      <div className="flex justify-between items-center">
+        <span className="text-gray-400">選択カテゴリー数</span>
+        <span className="text-white font-medium">
+          {config.categories.length}個
+        </span>
+      </div>
+      {config.categories.length > 0 && (
+        <div className="mt-2 text-xs text-gray-500">
+          順番: {config.categories.map(c => categoryLabels[c]).join(' → ')}
+        </div>
+      )}
+    </div>
+
+    {config.categories.length === 0 && (
+      <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
+        <p className="text-yellow-400 text-sm">
+          ⚠️ 最低1つのカテゴリーを選択してください
+        </p>
+      </div>
+    )}
+  </div>
+</div>
 
             {/* 現在の設定状態 */}
             {schedule && (
