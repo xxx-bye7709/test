@@ -523,18 +523,19 @@ ${categoryData.topic}について、${year}年${month}月時点の最新情報�
     const content = await this.generateWithGPT(category, options.template);
     
     // タイトル生成
+    const categoryData = this.templates[category] || this.templates.entertainment;
     const year = new Date().getFullYear();
-const month = new Date().getMonth() + 1;
-
-const titlePrompt = `
-現在は${year}年${month}月です。
-「${categoryData.topic}」について、${year}年のSEOに強い魅力的な記事タイトルを1つ生成してください。
-要件：
-- 30-50文字程度
-- 「${year}年」または「${year}年${month}月」を含める
-- キャッチーで興味を引く
-- 具体的な内容を示唆する
-タイトルのみを出力してください。`;
+    const month = new Date().getMonth() + 1;
+    
+    const titlePrompt = `
+    現在は${year}年${month}月です。
+    「${categoryData.topic}」について、${year}年のSEOに強い魅力的な記事タイトルを1つ生成してください。
+    要件：
+    - 30-50文字程度
+    - 「${year}年${month}月」を含める
+    - キャッチーで興味を引く
+    - 具体的な内容を示唆する
+    タイトルのみを出力してください。`;
     
     const titleCompletion = await this.openai.chat.completions.create({
       model: "gpt-4o-mini",
