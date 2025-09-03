@@ -488,32 +488,31 @@ ${categoryData.topic}について、${year}年${month}月時点の最新情報�
 
 記事本文のHTMLのみを出力してください。`;
 
-      const completion = await this.openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content: "あなたは人気ブログの専門記者です。SEOに強く、読者を引き付ける記事を書きます。最新のトレンドに詳しく、具体的な情報を提供します。"
-          },
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 3000
-      });
+    const completion = await this.openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: "あなたは人気ブログの専門記者です。SEOに強く、読者を引き付ける記事を書きます。最新のトレンドに詳しく、具体的な情報を提供します。"
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 3000
+    });
 
-      const content = this.cleanHtmlContent(completion.choices[0]?.message?.content || '');
-      
-      console.log('✅ Content generated via GPT');
-      return content;
-      
-    } catch (error) {
-      console.error('❌ Error generating with GPT:', error);
-      throw error;
-    }
+    const content = this.cleanHtmlContent(completion.choices[0]?.message?.content || '');
+    console.log('✅ Content generated via GPT');
+    return content;
+    
+  } catch (error) {
+    console.error('❌ Error generating with GPT:', error);
+    throw error;
   }
+}
 
   // 記事生成（カテゴリー別）
   async generateArticle(category = 'entertainment', options = {}) {
