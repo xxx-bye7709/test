@@ -2,6 +2,7 @@
 const functions = require('firebase-functions');
 const xmlrpc = require('xmlrpc');
 const { OpenAI } = require('openai');
+const { addOpenChatCTAToArticle } = require('./openchat-cta-generator');
 
 class BlogTool {
   constructor() {
@@ -764,10 +765,12 @@ const reviewCount = products[0].reviewCount || products[0].review?.count || '364
           `【${reviewCount}人が購入】${products[0].title?.substring(0, 30)}...の詳細レビュー｜${keyword}`;
         
         console.log('Article generated successfully');
+        console.log('💬 オープンチャットCTAを追加');
+        const contentWithCTA = addOpenChatCTAToArticle(content);
         
         return {
           title: title,
-          content: content,
+          content: contentWithCTA, 
           category: 'レビュー',
           tags: [keyword, 'レビュー', '比較', 'おすすめ', `${new Date().getFullYear()}年`],
           status: 'draft',
@@ -792,10 +795,12 @@ const reviewCount = products[0].reviewCount || products[0].review?.count || '364
     <p>価格: ${product.price || '価格不明'}</p>
   </div>`).join('')}
 </div>`;
+
+      const safeContentWithCTA = addOpenChatCTAToArticle(safeContent);
       
       return {
         title: `【${keyword}】人気商品まとめ`,
-        content: safeContent,
+        content: safeContentWithCTA,  // ← safeContent を safeContentWithCTA に変更
         category: 'レビュー',
         tags: [keyword, 'まとめ'],
         status: 'draft',
