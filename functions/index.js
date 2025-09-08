@@ -3123,7 +3123,6 @@ exports.previewArticleWithCTA = functions.https.onRequest(async (req, res) => {
   
   try {
     // 環境変数を読み込み
-    require('dotenv').config();
     
     const { OpenChatCTAGenerator } = require('./lib/openchat-cta-generator');
     const generator = new OpenChatCTAGenerator();
