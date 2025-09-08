@@ -5,8 +5,8 @@ class OpenChatCTAGenerator {
   constructor() {
     // オープンチャット情報
     this.config = {
-      chatName: process.env.OPENCHAT_NAME || 'お得情報共有コミュニティ',
-      searchKeyword: process.env.OPENCHAT_KEYWORD || 'エンタメお得情報',
+      chatName: process.env.OPENCHAT_NAME || 'Relax Contents Club',
+      searchKeyword: process.env.OPENCHAT_KEYWORD || '大人',
       benefits: [
         '週2回の厳選商品情報',
         'メンバー限定のお得情報',
