@@ -3113,3 +3113,185 @@ function generateArticleContent(products, articleType, keyword) {
     });
   });
 
+/**
+ * CTA付き記事のプレビュー
+ * URL: /previewArticleWithCTA
+ * Method: GET
+ */
+exports.previewArticleWithCTA = functions.https.onRequest(async (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  
+  try {
+    // 環境変数を読み込み
+    require('dotenv').config();
+    
+    const { OpenChatCTAGenerator } = require('./lib/openchat-cta-generator');
+    const generator = new OpenChatCTAGenerator();
+    
+    const sampleContent = `
+      <h2>サンプル商品記事</h2>
+      <p>これは商品記事のサンプルです。実際の記事では、ここに商品の詳細が入ります。</p>
+      <h3>商品1: おすすめアイテム</h3>
+      <p>商品の説明文がここに入ります。価格や特徴などを詳しく説明します。</p>
+      <h3>商品2: 人気商品</h3>
+      <p>2つ目の商品の説明です。比較情報なども含まれます。</p>
+      <h3>商品3: 新着商品</h3>
+      <p>3つ目の商品説明。ユーザーレビューなども記載されます。</p>
+      <h3>まとめ</h3>
+      <p>今回は3つの商品を紹介しました。ぜひチェックしてみてください。</p>
+    `;
+    
+    const contentWithCTA = generator.integrateWithProductArticle(sampleContent);
+    
+    // HTMLレスポンス
+    res.send(`
+      <!DOCTYPE html>
+      <html lang="ja">
+      <head>
+        <title>オープンチャットCTA プレビュー</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+          body { 
+            max-width: 900px; 
+            margin: 0 auto; 
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+            background: #f0f2f5;
+            line-height: 1.6;
+          }
+          .preview-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px 15px 0 0;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+          }
+          .preview-header h1 {
+            margin: 0 0 10px 0;
+            font-size: 28px;
+          }
+          .preview-header p {
+            margin: 0;
+            opacity: 0.9;
+            font-size: 16px;
+          }
+          .preview-info {
+            background: #fff8dc;
+            padding: 20px;
+            border-left: 4px solid #ffc107;
+            margin-bottom: 0;
+          }
+          .preview-content {
+            background: white;
+            padding: 40px;
+            border-radius: 0 0 15px 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+          }
+          .preview-content h2 {
+            color: #333;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+          }
+          .preview-content h3 {
+            color: #555;
+            margin-top: 30px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="preview-header">
+          <h1>🎯 オープンチャットCTA プレビュー</h1>
+          <p>商品記事に自動追加されるCTAの表示確認ページ</p>
+        </div>
+        <div class="preview-info">
+          <strong>📍 CTAの表示位置：</strong><br>
+          1. 記事中間 - さりげない誘導<br>
+          2. ノート案内 - 週2回更新の告知<br>
+          3. 記事末尾 - メインの参加案内
+        </div>
+        <div class="preview-content">
+          ${contentWithCTA}
+        </div>
+        <script>
+          console.log('CTA Preview loaded successfully');
+        </script>
+      </body>
+      </html>
+    `);
+    
+  } catch (error) {
+    console.error('プレビューエラー:', error);
+    res.status(500).send(`
+      <html>
+        <body style="font-family: sans-serif; padding: 20px;">
+          <h1>❌ エラーが発生しました</h1>
+          <pre style="background: #f5f5f5; padding: 15px; border-radius: 5px;">
+${error.message}
+
+${error.stack}
+          </pre>
+          <p>考えられる原因:</p>
+          <ul>
+            <li>openchat-cta-generator.js が見つからない</li>
+            <li>環境変数が設定されていない</li>
+            <li>構文エラー</li>
+          </ul>
+        </body>
+      </html>
+    `);
+  }
+});
+
+/**
+ * CTAクリックのトラッキング
+ * URL: /trackOpenChatCTA
+ * Method: POST
+ * Body: { action: 'click', position: 'end' }
+ */
+exports.trackOpenChatCTA = functions.https.onRequest(async (req, res) => {
+  // CORS対応
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type');
+  
+  // OPTIONSリクエストへの対応
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+  
+  try {
+    const { action, position } = req.body || {};
+    
+    // バリデーション
+    if (!action) {
+      return res.status(400).json({ 
+        error: 'action is required',
+        validActions: ['view', 'click', 'copy']
+      });
+    }
+    
+    // Firestoreに記録
+    const docRef = await admin.firestore().collection('openchat_analytics').add({
+      action: action,        // 'view', 'click', 'copy'
+      position: position,    // 'mid', 'end', 'note'
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      userAgent: req.headers['user-agent'],
+      date: new Date().toISOString().split('T')[0] // 日付別集計用
+    });
+    
+    console.log(`CTA tracked: ${action} at ${position} - ${docRef.id}`);
+    
+    res.json({ 
+      success: true,
+      id: docRef.id
+    });
+    
+  } catch (error) {
+    console.error('トラッキングエラー:', error);
+    res.status(500).json({ 
+      error: error.message 
+    });
+  }
+});
