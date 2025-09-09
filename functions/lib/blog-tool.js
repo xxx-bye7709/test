@@ -766,7 +766,10 @@ const reviewCount = products[0].reviewCount || products[0].review?.count || '364
         
         console.log('Article generated successfully');
         console.log('💬 オープンチャットCTAを追加');
+        console.log('CTA追加前のコンテンツ長:', content.length);
         const contentWithCTA = addOpenChatCTAToArticle(content);
+        console.log('CTA追加後のコンテンツ長:', contentWithCTA.length);
+        console.log('差分:', contentWithCTA.length - content.length);
         
         return {
           title: title,
