@@ -195,4 +195,15 @@ function showQRCode() {
   }
 }
 
-module.exports = { OpenChatCTAGenerator };
+// 関数を追加（クラスの外）
+function addOpenChatCTAToArticle(content, options = {}) {
+  const generator = new OpenChatCTAGenerator();
+  return generator.integrateWithProductArticle(content, options);
+}
+
+// エクスポートを修正
+module.exports = { 
+  OpenChatCTAGenerator,
+  addOpenChatCTAToArticle  // この関数を追加
+};
+
