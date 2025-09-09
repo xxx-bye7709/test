@@ -1,12 +1,21 @@
 // functions/lib/openchat-cta-generator.js を修正
 
+const functions = require('firebase-functions');
+
 class OpenChatCTAGenerator {
   constructor() {
-    // シンプルな設定
+    // Firebase ConfigとローカルEnvの両方に対応
+    const config = functions.config();
     this.config = {
-      chatName: process.env.OPENCHAT_NAME || 'Relax Contents Club',
-      inviteUrl: process.env.OPENCHAT_INVITE_URL || 'https://line.me/ti/g2/XwZWf26FbBhFsx9za5PmFGloKFnzY8sSA5d0Dg?utm_source=invitation&utm_medium=link_copy&utm_campaign=default',
-      qrCodeUrl: process.env.OPENCHAT_QR_URL || 'https://qr-official.line.me/gs/M_681wsvob_GW.png' // QRコード画像URL
+      chatName: (config.openchat && config.openchat.name) || 
+                process.env.OPENCHAT_NAME || 
+                'Relax Contents Club',
+      inviteUrl: (config.openchat && config.openchat.invite_url) || 
+                 process.env.OPENCHAT_INVITE_URL || 
+                 'https://line.me/ti/g2/XwZWf26FbBhFsx9za5PmFGloKFnzY8sSA5d0Dg?utm_source=invitation&utm_medium=link_copy&utm_campaign=default',
+      qrCodeUrl: (config.openchat && config.openchat.qr_url) || 
+                 process.env.OPENCHAT_QR_URL || 
+                 'https://qr-official.line.me/gs/M_681wsvob_GW.png'
     };
   }
 
