@@ -1,208 +1,87 @@
-// functions/lib/openchat-cta-generator.js
-// 商品記事にLINEオープンチャットへの誘導CTAを追加
+// functions/lib/openchat-cta-generator.js を修正
 
 class OpenChatCTAGenerator {
   constructor() {
-    // オープンチャット情報
+    // シンプルな設定
     this.config = {
       chatName: process.env.OPENCHAT_NAME || 'Relax Contents Club',
-      searchKeyword: process.env.OPENCHAT_KEYWORD || '大人',
-      benefits: [
-        '週2回の厳選商品情報',
-        'メンバー限定のお得情報',
-        '新作の先行案内',
-        '完全無料・匿名参加OK'
-      ]
+      inviteUrl: process.env.OPENCHAT_INVITE_URL || 'https://line.me/ti/g2/XwZWf26FbBhFsx9za5PmFGloKFnzY8sSA5d0Dg?utm_source=invitation&utm_medium=link_copy&utm_campaign=default',
+      qrCodeUrl: process.env.OPENCHAT_QR_URL || 'https://qr-official.line.me/gs/M_681wsvob_GW.png' // QRコード画像URL
     };
   }
 
   /**
-   * 記事の中間に挿入するCTA（控えめ版）
-   */
-  generateMidArticleCTA() {
-    return `
-<!-- オープンチャット誘導（記事中間） -->
-<div style="
-  background: linear-gradient(135deg, #00B900 0%, #00D400 100%);
-  border-radius: 15px;
-  padding: 20px;
-  margin: 30px 0;
-  text-align: center;
-  position: relative;">
-  
-  <p style="
-    color: white;
-    font-size: 16px;
-    margin: 0;
-    font-weight: bold;">
-    💬 この記事の商品について語り合いませんか？
-  </p>
-  
-  <p style="
-    color: rgba(255,255,255,0.9);
-    font-size: 14px;
-    margin: 10px 0;">
-    LINEオープンチャットで情報交換中
-  </p>
-  
-  <a href="#openchat-info" 
-     style="
-       color: white;
-       text-decoration: underline;
-       font-size: 14px;">
-    参加方法を見る ↓
-  </a>
-</div>`;
-  }
-
-  /**
-   * 記事の最後に挿入するメインCTA
+   * シンプルな記事末尾CTA
    */
   generateEndArticleCTA() {
-    const benefits = this.config.benefits.map(b => `✅ ${b}`).join('<br>');
-    
     return `
-<!-- オープンチャット誘導（記事末尾） -->
-<div id="openchat-info" style="
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+<!-- オープンチャット誘導 -->
+<div style="
+  background: linear-gradient(135deg, #00B900 0%, #00D400 100%);
   border-radius: 20px;
-  padding: 40px 30px;
+  padding: 30px;
   margin: 50px auto;
-  max-width: 700px;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+  max-width: 600px;
   text-align: center;
-  position: relative;
-  overflow: hidden;">
+  box-shadow: 0 10px 30px rgba(0, 185, 0, 0.2);">
   
-  <!-- 背景装飾 -->
-  <div style="
-    position: absolute;
-    top: -100px;
-    right: -100px;
-    width: 300px;
-    height: 300px;
-    background: rgba(255,255,255,0.1);
-    border-radius: 50%;"></div>
-  
-  <!-- LINEアイコン -->
-  <div style="
-    display: inline-block;
-    background: white;
-    border-radius: 20px;
-    padding: 15px 30px;
-    margin-bottom: 20px;
-    box-shadow: 0 10px 20px rgba(0,0,0,0.1);">
-    <span style="color: #00B900; font-size: 24px; font-weight: bold;">
-      LINE オープンチャット
-    </span>
-  </div>
-  
-  <!-- メインメッセージ -->
   <h3 style="
     color: white;
-    font-size: 28px;
-    font-weight: bold;
-    margin-bottom: 20px;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-    🎉 ${this.config.chatName}
+    font-size: 24px;
+    margin-bottom: 15px;">
+    🎁 限定情報を受け取る
   </h3>
   
   <p style="
-    color: rgba(255,255,255,0.95);
+    color: white;
     font-size: 16px;
-    margin-bottom: 30px;
-    line-height: 1.8;">
-    同じ趣味の仲間と<br>
-    お得な情報を共有しよう！
+    margin-bottom: 25px;
+    opacity: 0.95;">
+    LINEオープンチャット「${this.config.chatName}」<br>
+    お得な商品情報を配信中！
   </p>
   
-  <!-- 特典リスト -->
-  <div style="
-    background: rgba(255,255,255,0.15);
-    backdrop-filter: blur(10px);
-    border-radius: 15px;
-    padding: 25px;
-    margin-bottom: 30px;
-    text-align: left;">
-    <p style="
-      color: white;
-      font-size: 14px;
-      line-height: 2;
-      margin: 0;">
-      ${benefits}
-    </p>
-  </div>
-  
-  <!-- 参加方法 -->
-  <div style="
-    background: white;
-    border-radius: 15px;
-    padding: 25px;
-    margin-bottom: 20px;">
-    
-    <h4 style="
-      color: #667eea;
-      font-size: 18px;
-      margin-bottom: 15px;
-      font-weight: bold;">
-      📱 参加方法（無料）
-    </h4>
-    
-    <ol style="
-      text-align: left;
-      color: #333;
-      font-size: 14px;
-      line-height: 2;
-      margin: 0;
-      padding-left: 20px;">
-      <li>LINEアプリを開く</li>
-      <li>ホーム → オープンチャット</li>
-      <li>🔍 検索で「<strong style="color: #667eea;">${this.config.searchKeyword}</strong>」</li>
-      <li>参加ボタンをタップ</li>
-    </ol>
-    
-    <div style="
-      background: #fff3cd;
-      border-left: 4px solid #ffc107;
-      padding: 10px 15px;
-      margin-top: 15px;
-      text-align: left;">
-      <p style="
-        color: #856404;
-        font-size: 12px;
-        margin: 0;">
-        ⚠️ 18歳以上限定のコミュニティです
-      </p>
-    </div>
-  </div>
-  
-  <!-- CTAボタン -->
-  <button onclick="showOpenChatGuide()" style="
-    background: white;
-    color: #667eea;
-    border: none;
-    padding: 15px 40px;
-    border-radius: 30px;
-    font-size: 18px;
-    font-weight: bold;
-    cursor: pointer;
-    box-shadow: 0 10px 20px rgba(0,0,0,0.2);
-    transition: all 0.3s;">
-    参加手順を表示 →
-  </button>
+  <a href="${this.config.inviteUrl}" 
+     target="_blank"
+     rel="noopener noreferrer"
+     style="
+       display: inline-block;
+       background: white;
+       color: #00B900;
+       padding: 15px 40px;
+       border-radius: 30px;
+       text-decoration: none;
+       font-weight: bold;
+       font-size: 18px;
+       box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+       transition: transform 0.3s;">
+    今すぐ参加する →
+  </a>
   
   <p style="
-    color: rgba(255,255,255,0.7);
-    font-size: 12px;
-    margin-top: 20px;">
-    ※ LINEアカウントがあれば誰でも参加できます<br>
-    ※ 本名は表示されません（ニックネーム参加）
+    color: rgba(255,255,255,0.8);
+    font-size: 14px;
+    margin-top: 20px;
+    margin-bottom: 10px;">
+    または QRコードで参加
   </p>
+  
+  <button onclick="showQRCode()" style="
+    background: rgba(255,255,255,0.2);
+    color: white;
+    border: 1px solid white;
+    padding: 10px 25px;
+    border-radius: 20px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.3s;">
+    QRコードを表示
+  </button>
 </div>
 
-<!-- モーダル用JavaScript -->
+<!-- QRコードモーダル -->
 <script>
-function showOpenChatGuide() {
+function showQRCode() {
   const modal = document.createElement('div');
   modal.style.cssText = \`
     position: fixed;
@@ -215,6 +94,7 @@ function showOpenChatGuide() {
     align-items: center;
     justify-content: center;
     z-index: 9999;
+    cursor: pointer;
   \`;
   
   modal.innerHTML = \`
@@ -222,14 +102,28 @@ function showOpenChatGuide() {
       background: white;
       border-radius: 20px;
       padding: 30px;
-      max-width: 500px;
-      margin: 20px;
+      text-align: center;
       position: relative;">
+      
+      <h3 style="margin-bottom: 20px; color: #333;">
+        QRコードで参加
+      </h3>
+      
+      <img src="${this.config.qrCodeUrl}" 
+           alt="LINE オープンチャット QRコード" 
+           style="width: 200px; height: 200px;">
+      
+      <p style="
+        margin-top: 20px;
+        color: #666;
+        font-size: 14px;">
+        LINEアプリでQRコードを読み取り
+      </p>
       
       <button onclick="this.parentElement.parentElement.remove()" style="
         position: absolute;
-        top: 15px;
-        right: 15px;
+        top: 10px;
+        right: 10px;
         background: none;
         border: none;
         font-size: 24px;
@@ -237,151 +131,62 @@ function showOpenChatGuide() {
         color: #999;">
         ×
       </button>
-      
-      <h3 style="
-        color: #333;
-        margin-bottom: 20px;">
-        LINEオープンチャット参加手順
-      </h3>
-      
-      <div style="
-        background: #f8f9fa;
-        border-radius: 10px;
-        padding: 20px;
-        margin-bottom: 20px;">
-        
-        <p style="
-          font-weight: bold;
-          color: #00B900;
-          margin-bottom: 10px;">
-          検索キーワード
-        </p>
-        
-        <div style="
-          background: white;
-          border: 2px solid #00B900;
-          border-radius: 10px;
-          padding: 15px;
-          text-align: center;
-          font-size: 18px;
-          font-weight: bold;
-          color: #333;
-          user-select: all;
-          cursor: text;">
-          ${this.config.searchKeyword}
-        </div>
-        
-        <p style="
-          font-size: 12px;
-          color: #666;
-          margin-top: 10px;
-          text-align: center;">
-          ↑ タップして選択・コピー
-        </p>
-      </div>
-      
-      <ol style="
-        color: #333;
-        line-height: 2;
-        margin-bottom: 20px;">
-        <li>上記キーワードをコピー</li>
-        <li>LINEアプリを開く</li>
-        <li>オープンチャットで検索</li>
-        <li>参加ボタンをタップ</li>
-      </ol>
-      
-      <button onclick="
-        navigator.clipboard.writeText('${this.config.searchKeyword}');
-        alert('キーワードをコピーしました！\\nLINEアプリを開いて検索してください。');
-        this.parentElement.parentElement.remove();
-      " style="
-        background: #00B900;
-        color: white;
-        border: none;
-        padding: 12px 30px;
-        border-radius: 25px;
-        font-size: 16px;
-        font-weight: bold;
-        cursor: pointer;
-        width: 100%;">
-        キーワードをコピーする
-      </button>
     </div>
   \`;
   
+  modal.onclick = function(e) {
+    if (e.target === modal) {
+      modal.remove();
+    }
+  };
+  
   document.body.appendChild(modal);
 }
-
-// ページ離脱時のポップアップ（オプション）
-let exitIntentShown = false;
-document.addEventListener('mouseleave', function(e) {
-  if (e.clientY <= 0 && !exitIntentShown && !sessionStorage.getItem('openchatCTAShown')) {
-    exitIntentShown = true;
-    sessionStorage.setItem('openchatCTAShown', 'true');
-    
-    if (confirm('💬 お得情報を見逃さないために\\nLINEオープンチャットに参加しませんか？')) {
-      document.getElementById('openchat-info').scrollIntoView({ behavior: 'smooth' });
-    }
-  }
-});
 </script>`;
   }
 
   /**
-   * ノート投稿への誘導（記事内）
+   * 超シンプルな中間CTA
    */
-  generateNoteReferenceCTA() {
+  generateMidArticleCTA() {
     return `
-<!-- ノート更新通知 -->
+<!-- 中間CTA -->
 <div style="
-  background: #E3F2FD;
-  border-left: 4px solid #2196F3;
-  padding: 15px 20px;
+  background: #E8F5E9;
+  border-left: 4px solid #4CAF50;
+  padding: 20px;
   margin: 30px 0;">
-  
   <p style="
-    color: #1565C0;
-    font-size: 14px;
-    margin: 0;">
-    📌 <strong>不定期更新</strong><br>
-    オープンチャットのノートで最新商品情報を配信中！<br>
-    <a href="#openchat-info" style="color: #1976D2;">
-      参加方法はこちら ↓
+    margin: 0;
+    color: #2E7D32;
+    font-size: 16px;">
+    💬 <strong>限定情報配信中！</strong>
+    <a href="${this.config.inviteUrl}" 
+       target="_blank"
+       style="color: #1B5E20; text-decoration: underline;">
+      LINEオープンチャットに参加する →
     </a>
   </p>
 </div>`;
   }
 
   /**
-   * 既存の商品記事に統合
+   * 記事への統合（シンプル版）
    */
   integrateWithProductArticle(articleContent, options = {}) {
-    const { 
-      addMidCTA = true, 
-      addEndCTA = true,
-      addNoteCTA = true 
-    } = options;
+    const { addMidCTA = false, addEndCTA = true } = options;
     
     let enhancedContent = articleContent;
     
-    // 記事の段落を分析
-    const paragraphs = articleContent.split('</p>');
-    const midPoint = Math.floor(paragraphs.length / 2);
-    
-    // 中間CTAを挿入
-    if (addMidCTA && paragraphs.length > 5) {
+    // 中間CTAは必要な場合のみ
+    if (addMidCTA) {
+      const paragraphs = articleContent.split('</p>');
+      const midPoint = Math.floor(paragraphs.length / 2);
       paragraphs.splice(midPoint, 0, this.generateMidArticleCTA());
+      enhancedContent = paragraphs.join('</p>');
     }
     
-    // ノート参照CTAを挿入
-    if (addNoteCTA && paragraphs.length > 8) {
-      const notePoint = Math.floor(paragraphs.length * 0.75);
-      paragraphs.splice(notePoint, 0, this.generateNoteReferenceCTA());
-    }
-    
-    enhancedContent = paragraphs.join('</p>');
-    
-    // 最後にメインCTAを追加
+    // 末尾にメインCTA
     if (addEndCTA) {
       enhancedContent += this.generateEndArticleCTA();
     }
@@ -390,17 +195,4 @@ document.addEventListener('mouseleave', function(e) {
   }
 }
 
-// 既存のblog-tool.jsに統合する関数
-function addOpenChatCTAToArticle(articleContent) {
-  const ctaGenerator = new OpenChatCTAGenerator();
-  return ctaGenerator.integrateWithProductArticle(articleContent, {
-    addMidCTA: true,    // 記事中間に小さなCTA
-    addEndCTA: true,    // 記事末尾にメインCTA
-    addNoteCTA: true    // ノート更新の案内
-  });
-}
-
-module.exports = {
-  OpenChatCTAGenerator,
-  addOpenChatCTAToArticle
-};
+module.exports = { OpenChatCTAGenerator };
