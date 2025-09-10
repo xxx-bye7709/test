@@ -183,25 +183,37 @@ function showQRCode() {
    * 記事への統合（シンプル版）
    */
   integrateWithProductArticle(articleContent, options = {}) {
-    const { addMidCTA = false, addEndCTA = true } = options;
-    
-    let enhancedContent = articleContent;
-    
-    // 中間CTAは必要な場合のみ
-    if (addMidCTA) {
-      const paragraphs = articleContent.split('</p>');
-      const midPoint = Math.floor(paragraphs.length / 2);
-      paragraphs.splice(midPoint, 0, this.generateMidArticleCTA());
-      enhancedContent = paragraphs.join('</p>');
-    }
-    
-    // 末尾にメインCTA
-    if (addEndCTA) {
-      enhancedContent += this.generateEndArticleCTA();
-    }
-    
-    return enhancedContent;
+  const { addMidCTA = false, addEndCTA = true } = options;
+  
+  let enhancedContent = articleContent;
+  
+  // 商品詳細ボタンなどの終了タグを確認
+  const hasProductButtons = articleContent.includes('詳細を見る') || 
+                           articleContent.includes('product-button') ||
+                           articleContent.includes('商品を見る');
+  
+  if (hasProductButtons) {
+    // 商品エリアの最後を特定して、その後にCTAを追加
+    const lastButtonPattern = /(<a[^>]*詳細を見る[^<]*<\/a>)([^<]*<\/div>)/gi;
+    enhancedContent = articleContent.replace(lastButtonPattern, (match, button, closing) => {
+      return button + closing + '\n<!-- 商品エリア終了 -->\n';
+    });
   }
+  
+  // 中間CTAは必要な場合のみ（商品エリア外に挿入）
+  if (addMidCTA && !hasProductButtons) {
+    const paragraphs = enhancedContent.split('</p>');
+    const midPoint = Math.floor(paragraphs.length / 2);
+    paragraphs.splice(midPoint, 0, this.generateMidArticleCTA());
+    enhancedContent = paragraphs.join('</p>');
+  }
+  
+  // 末尾にメインCTA（必ず商品エリアの後）
+  if (addEndCTA) {
+    enhancedContent += this.generateEndArticleCTA();
+  }
+  
+  return enhancedContent;
 }
 
 // 関数を追加（クラスの外）
