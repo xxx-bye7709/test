@@ -490,7 +490,7 @@ ${categoryData.topic}について、${year}年${month}月時点の最新情報�
 記事本文のHTMLのみを出力してください。`;
 
     const completion = await this.openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-5-mini",
       messages: [
         {
           role: "system",
@@ -501,8 +501,7 @@ ${categoryData.topic}について、${year}年${month}月時点の最新情報�
           content: prompt
         }
       ],
-      temperature: 0.7,
-      max_tokens: 3000
+      max_completion_tokens: 3000
     });
 
     const content = this.cleanHtmlContent(completion.choices[0]?.message?.content || '');
@@ -539,15 +538,14 @@ ${categoryData.topic}について、${year}年${month}月時点の最新情報�
     タイトルのみを出力してください。`;
     
     const titleCompletion = await this.openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-5-mini",
       messages: [
         {
           role: "user",
           content: titlePrompt
         }
       ],
-      temperature: 0.8,
-      max_tokens: 100
+      max_completion_tokens: 100
     });
     const title = titleCompletion.choices[0]?.message?.content?.trim() || `${category}の最新情報`;
     
@@ -670,7 +668,7 @@ HTMLタグを使用して視覚的に魅力的な記事を生成してくださ�
         
         // OpenAI API呼び出し
         const completion = await this.openai.chat.completions.create({
-          model: 'gpt-4o-mini',
+          model: 'gpt-5-mini',
           messages: [
             {
               role: 'system',
@@ -681,8 +679,7 @@ HTMLタグを使用して視覚的に魅力的な記事を生成してくださ�
               content: prompt
             }
           ],
-          temperature: 0.7,
-          max_tokens: 4000
+          max_completion_tokens: 4000
         });
         
         console.log('OpenAI response length:', completion.choices[0].message.content.length);
@@ -945,6 +942,7 @@ const reviewCount = products[0].reviewCount || products[0].review?.count || '364
 }
 
 module.exports = BlogTool;
+
 
 
 
