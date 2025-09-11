@@ -22,137 +22,98 @@ class OpenChatCTAGenerator {
   /**
    * シンプルな記事末尾CTA
    */
-  generateEndArticleCTA() {
-    return `
-<!-- オープンチャット誘導 -->
-<div style="
-  background: linear-gradient(135deg, #00B900 0%, #00D400 100%);
-  border-radius: 20px;
-  padding: 30px;
-  margin: 50px auto;
-  max-width: 600px;
-  text-align: center;
-  box-shadow: 0 10px 30px rgba(0, 185, 0, 0.2);">
-  
-  <h3 style="
-    color: white;
-    font-size: 24px;
-    margin-bottom: 15px;">
-    🎁 限定情報を受け取る
-  </h3>
-  
-  <p style="
-    color: white;
-    font-size: 16px;
-    margin-bottom: 25px;
-    opacity: 0.95;">
-    LINEオープンチャット「${this.config.chatName}」<br>
-    お得な商品情報を配信中！
-  </p>
-  
-  <a href="${this.config.inviteUrl}" 
-     target="_blank"
-     rel="noopener noreferrer"
-     style="
-       display: inline-block;
-       background: white;
-       color: #00B900;
-       padding: 15px 40px;
-       border-radius: 30px;
-       text-decoration: none;
-       font-weight: bold;
-       font-size: 18px;
-       box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-       transition: transform 0.3s;">
-    今すぐ参加する →
-  </a>
-  
-  <p style="
-    color: rgba(255,255,255,0.8);
-    font-size: 14px;
-    margin-top: 20px;
-    margin-bottom: 10px;">
-    または QRコードで参加
-  </p>
-  
-  <button onclick="showQRCode()" style="
-    background: rgba(255,255,255,0.2);
-    color: white;
-    border: 1px solid white;
-    padding: 10px 25px;
-    border-radius: 20px;
-    font-size: 14px;
-    cursor: pointer;
-    transition: background 0.3s;">
-    QRコードを表示
-  </button>
-</div>
+  // generateEndArticleCTA() を以下に置き換え
+generateEndArticleCTA() {
+  return `
+<!-- ========== 商品エリア完全終了 ========== -->
+<div style="clear: both; height: 50px;"></div>
 
-<!-- QRコードモーダル -->
+<!-- ========== LINEオープンチャット専用エリア開始 ========== -->
+<div id="line-openchat-cta" style="
+  clear: both;
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  position: relative;">
+  
+  <!-- CTAコンテナ -->
+  <div style="
+    background: linear-gradient(135deg, #00B900 0%, #00D400 100%);
+    border-radius: 20px;
+    padding: 30px;
+    margin: 0 auto;
+    max-width: 600px;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0, 185, 0, 0.2);
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;">
+    
+    <h3 style="
+      color: white;
+      font-size: 24px;
+      margin: 0 0 15px 0;">
+      🎁 限定情報を受け取る
+    </h3>
+    
+    <p style="
+      color: white;
+      font-size: 16px;
+      margin: 0 0 25px 0;">
+      LINEオープンチャット「${this.config.chatName}」<br>
+      お得な商品情報を配信中！
+    </p>
+    
+    <!-- LINE参加ボタンのみ -->
+    <a href="${this.config.inviteUrl}" 
+       target="_blank"
+       rel="noopener noreferrer"
+       onclick="event.stopPropagation();"
+       style="
+         display: inline-block;
+         background: white;
+         color: #00B900 !important;
+         padding: 15px 40px;
+         border-radius: 30px;
+         text-decoration: none !important;
+         font-weight: bold;
+         font-size: 18px;
+         box-shadow: 0 5px 15px rgba(0,0,0,0.2);">
+      今すぐ参加する →
+    </a>
+    
+    <p style="
+      color: white;
+      font-size: 14px;
+      margin: 20px 0 10px 0;">
+      またはQRコードで参加
+    </p>
+    
+    <button onclick="showQRCode()" style="
+      background: rgba(255,255,255,0.2);
+      color: white;
+      border: 1px solid white;
+      padding: 10px 25px;
+      border-radius: 20px;
+      font-size: 14px;
+      cursor: pointer;">
+      QRコードを表示
+    </button>
+  </div>
+</div>
+<!-- ========== LINEオープンチャット専用エリア終了 ========== -->
+
 <script>
 function showQRCode() {
   const modal = document.createElement('div');
-  modal.style.cssText = \`
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.8);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-    cursor: pointer;
-  \`;
-  
-  modal.innerHTML = \`
-    <div style="
-      background: white;
-      border-radius: 20px;
-      padding: 30px;
-      text-align: center;
-      position: relative;">
-      
-      <h3 style="margin-bottom: 20px; color: #333;">
-        QRコードで参加
-      </h3>
-      
-      <img src="${this.config.qrCodeUrl}" 
-           alt="LINE オープンチャット QRコード" 
-           style="width: 200px; height: 200px;">
-      
-      <p style="
-        margin-top: 20px;
-        color: #666;
-        font-size: 14px;">
-        LINEアプリでQRコードを読み取り
-      </p>
-      
-      <button onclick="this.parentElement.parentElement.remove()" style="
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        background: none;
-        border: none;
-        font-size: 24px;
-        cursor: pointer;
-        color: #999;">
-        ×
-      </button>
-    </div>
-  \`;
-  
-  modal.onclick = function(e) {
-    if (e.target === modal) {
-      modal.remove();
-    }
-  };
-  
+  modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:99999;';
+  modal.innerHTML = '<div style="background:white;padding:30px;border-radius:20px;text-align:center;"><img src="${this.config.qrCodeUrl}" style="width:200px;height:200px;"><p>LINEアプリで読み取り</p><button onclick="this.parentElement.parentElement.remove()" style="margin-top:20px;padding:10px 30px;">閉じる</button></div>';
+  modal.onclick = function(e) { if(e.target === modal) modal.remove(); };
   document.body.appendChild(modal);
 }
 </script>`;
-  }
+}
 
   /**
    * 超シンプルな中間CTA
