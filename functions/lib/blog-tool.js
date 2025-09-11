@@ -753,7 +753,12 @@ ${products.map((product, index) => {
 `;
 
 // contentに商品セクションを追加
-content = content + '\n\n' + productsSectionHTML + '\n\n<!-- 商品エリア終了 -->\n\n';
+content = content + '\n\n' + productsSectionHTML + `
+</div>
+<!-- ############## 商品エリア完全終了 ############## -->
+<div style="clear: both; display: block; height: 80px; width: 100%;"></div>
+<!-- ############## 以下CTAエリア ############## -->
+`;
 
 // タイトル生成（既存のコード）
 const reviewCount = products[0].reviewCount || products[0].review?.count || '364';
