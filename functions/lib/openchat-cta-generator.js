@@ -175,7 +175,8 @@ function showQRCode() {
   }
   
   return enhancedContent;
-}
+ }
+}  
 
 // 関数を追加（クラスの外）
 function addOpenChatCTAToArticle(content, options = {}) {
