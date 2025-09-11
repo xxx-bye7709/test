@@ -753,7 +753,7 @@ ${products.map((product, index) => {
 `;
 
 // contentに商品セクションを追加
-content = content + '\n\n' + productsSectionHTML;
+content = content + '\n\n' + productsSectionHTML + '\n\n<!-- 商品エリア終了 -->\n\n';
 
 // タイトル生成（既存のコード）
 const reviewCount = products[0].reviewCount || products[0].review?.count || '364';
@@ -942,6 +942,7 @@ const reviewCount = products[0].reviewCount || products[0].review?.count || '364
 }
 
 module.exports = BlogTool;
+
 
 
 
