@@ -56,9 +56,35 @@ function initializeServices() {
 // === ヘルパー関数 ===
 const generateArticleForCategory = async (category) => {
   loadModules();
-  const blogTool = new BlogAutomationTool();
+  // targetSiteが指定されている場合、サイト情報を取得
+  let siteConfig = null;
+  if (targetSite) {
+    const siteDoc = await admin.firestore()
+      .collection('wordpress_sites')
+      .doc(targetSite)
+      .get();
+    
+    if (siteDoc.exists) {
+      siteConfig = siteDoc.data();
+      console.log(`Using site: ${siteConfig.name} for ${category} article`);
+    }
+  }
+  
+  const blogTool = new BlogAutomationTool(siteConfig); // サイト情報を渡す
   const article = await blogTool.generateArticle(category);
   const result = await blogTool.postToWordPress(article);
+  
+  // Firestoreに記録する際にtargetSiteを含める
+  if (targetSite) {
+    await admin.firestore().collection('generatedArticles').add({
+      ...result,
+      targetSite: targetSite,
+      siteName: siteConfig?.name,
+      siteUrl: siteConfig?.url,
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+  }
+  
   return result;
 };
 
@@ -294,8 +320,13 @@ exports.generateEntertainmentArticle = functions
   .https.onRequest(async (req, res) => {
     return cors(req, res, async () => {
       try {
-        const result = await generateArticleForCategory('entertainment');
-        res.json({ success: true, ...result });
+        const targetSite = req.body?.targetSite || null; // targetSiteを取得
+        const result = await generateArticleForCategory('entertainment', targetSite);
+        res.json({ 
+          success: true, 
+          targetSite: targetSite,
+          ...result 
+        });
       } catch (error) {
         console.error('Error:', error);
         res.status(500).json({ success: false, error: error.message });
@@ -310,8 +341,13 @@ exports.generateAnimeArticle = functions
   .https.onRequest(async (req, res) => {
     return cors(req, res, async () => {
       try {
-        const result = await generateArticleForCategory('anime');
-        res.json({ success: true, ...result });
+        const targetSite = req.body?.targetSite || null; // targetSiteを取得
+        const result = await generateArticleForCategory('entertainment', targetSite);
+        res.json({ 
+          success: true, 
+          targetSite: targetSite,
+          ...result 
+        });
       } catch (error) {
         console.error('Error:', error);
         res.status(500).json({ success: false, error: error.message });
@@ -326,8 +362,13 @@ exports.generateGameArticle = functions
   .https.onRequest(async (req, res) => {
     return cors(req, res, async () => {
       try {
-        const result = await generateArticleForCategory('game');
-        res.json({ success: true, ...result });
+        const targetSite = req.body?.targetSite || null; // targetSiteを取得
+        const result = await generateArticleForCategory('entertainment', targetSite);
+        res.json({ 
+          success: true, 
+          targetSite: targetSite,
+          ...result 
+        });
       } catch (error) {
         console.error('Error:', error);
         res.status(500).json({ success: false, error: error.message });
@@ -342,8 +383,13 @@ exports.generateMovieArticle = functions
   .https.onRequest(async (req, res) => {
     return cors(req, res, async () => {
       try {
-        const result = await generateArticleForCategory('movie');
-        res.json({ success: true, ...result });
+        const targetSite = req.body?.targetSite || null; // targetSiteを取得
+        const result = await generateArticleForCategory('entertainment', targetSite);
+        res.json({ 
+          success: true, 
+          targetSite: targetSite,
+          ...result 
+        });
       } catch (error) {
         console.error('Error:', error);
         res.status(500).json({ success: false, error: error.message });
@@ -358,8 +404,13 @@ exports.generateMusicArticle = functions
   .https.onRequest(async (req, res) => {
     return cors(req, res, async () => {
       try {
-        const result = await generateArticleForCategory('music');
-        res.json({ success: true, ...result });
+        const targetSite = req.body?.targetSite || null; // targetSiteを取得
+        const result = await generateArticleForCategory('entertainment', targetSite);
+        res.json({ 
+          success: true, 
+          targetSite: targetSite,
+          ...result 
+        });
       } catch (error) {
         console.error('Error:', error);
         res.status(500).json({ success: false, error: error.message });
@@ -374,15 +425,19 @@ exports.generateTechArticle = functions
   .https.onRequest(async (req, res) => {
     return cors(req, res, async () => {
       try {
-        const result = await generateArticleForCategory('tech');
-        res.json({ success: true, ...result });
+        const targetSite = req.body?.targetSite || null; // targetSiteを取得
+        const result = await generateArticleForCategory('entertainment', targetSite);
+        res.json({ 
+          success: true, 
+          targetSite: targetSite,
+          ...result 
+        });
       } catch (error) {
         console.error('Error:', error);
         res.status(500).json({ success: false, error: error.message });
       }
     });
   });
-
 // 美容記事生成
 exports.generateBeautyArticle = functions
   .region('asia-northeast1')
@@ -390,8 +445,13 @@ exports.generateBeautyArticle = functions
   .https.onRequest(async (req, res) => {
     return cors(req, res, async () => {
       try {
-        const result = await generateArticleForCategory('beauty');
-        res.json({ success: true, ...result });
+        const targetSite = req.body?.targetSite || null; // targetSiteを取得
+        const result = await generateArticleForCategory('entertainment', targetSite);
+        res.json({ 
+          success: true, 
+          targetSite: targetSite,
+          ...result 
+        });
       } catch (error) {
         console.error('Error:', error);
         res.status(500).json({ success: false, error: error.message });
@@ -406,8 +466,13 @@ exports.generateFoodArticle = functions
   .https.onRequest(async (req, res) => {
     return cors(req, res, async () => {
       try {
-        const result = await generateArticleForCategory('food');
-        res.json({ success: true, ...result });
+        const targetSite = req.body?.targetSite || null; // targetSiteを取得
+        const result = await generateArticleForCategory('entertainment', targetSite);
+        res.json({ 
+          success: true, 
+          targetSite: targetSite,
+          ...result 
+        });
       } catch (error) {
         console.error('Error:', error);
         res.status(500).json({ success: false, error: error.message });
@@ -422,10 +487,11 @@ exports.generateRandomArticle = functions
   .https.onRequest(async (req, res) => {
     return cors(req, res, async () => {
       try {
+        const targetSite = req.body?.targetSite || null; // targetSiteを取得
         const categories = ['entertainment', 'anime', 'game', 'movie', 'music', 'tech', 'beauty', 'food'];
         const randomCategory = categories[Math.floor(Math.random() * categories.length)];
         const result = await generateArticleForCategory(randomCategory);
-        res.json({ success: true, category: randomCategory, ...result });
+        res.json({ success: true, targetSite: targetSite, category: randomCategory, ...result });
       } catch (error) {
         console.error('Error:', error);
         res.status(500).json({ success: false, error: error.message });
@@ -712,7 +778,7 @@ async function generateSimpleHTMLRelationshipArticle(blogTool, contentLevel = 'g
 
   try {
     const response = await blogTool.openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: 'gpt-5-mini',
       messages: [
         {
           role: 'system',
@@ -3294,3 +3360,112 @@ exports.trackOpenChatCTA = functions.https.onRequest(async (req, res) => {
     });
   }
 });
+
+// WordPress サイト管理用エンドポイント
+exports.getWordPressSites = functions
+  .region('asia-northeast1')  // ← この行を追加
+  .https.onRequest(async (req, res) => {
+    res.set('Access-Control-Allow-Origin', '*');
+  
+  try {
+    const snapshot = await admin.firestore()
+      .collection('wordpress_sites')
+      .orderBy('priority')
+      .get();
+    
+    const sites = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    
+    res.json({ 
+      success: true, 
+      total: sites.length,
+      active: sites.filter(s => s.enabled).length,
+      sites 
+    });
+  } catch (error) {
+    console.error('Error getting sites:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// アクティブサイトのみ取得
+exports.getActiveSites = functions
+   .region('asia-northeast1')  // ← この行を追加
+  .https.onRequest(async (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  
+  try {
+    const snapshot = await admin.firestore()
+      .collection('wordpress_sites')
+      .where('enabled', '==', true)
+      .orderBy('priority')
+      .get();
+    
+    const sites = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    
+    res.json({ success: true, sites });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// サイト別の統計情報を取得
+exports.getSiteStats = functions
+  .region('asia-northeast1')
+  .https.onRequest(async (req, res) => {
+    res.set('Access-Control-Allow-Origin', '*');
+    
+    try {
+      const sitesSnapshot = await admin.firestore()
+        .collection('wordpress_sites')
+        .orderBy('priority')
+        .get();
+      
+      const stats = await Promise.all(
+        sitesSnapshot.docs.map(async (doc) => {
+          const siteData = doc.data();
+          
+          // 各サイトの記事数をカウント
+          const postsSnapshot = await admin.firestore()
+            .collection('generatedArticles')
+            .where('targetSite', '==', doc.id)
+            .limit(1)
+            .orderBy('createdAt', 'desc')
+            .get();
+          
+          // 記事総数を取得
+          const totalPostsSnapshot = await admin.firestore()
+            .collection('generatedArticles')
+            .where('targetSite', '==', doc.id)
+            .get();
+          
+          return {
+            siteId: doc.id,
+            siteName: siteData.name,
+            siteUrl: siteData.url,
+            enabled: siteData.enabled,
+            isDefault: siteData.isDefault,
+            postCount: totalPostsSnapshot.size,
+            lastPostDate: postsSnapshot.docs[0]?.data()?.createdAt?.toDate() || null,
+            dmmConfigured: !!(siteData.dmmApiKey && siteData.dmmAffiliateId)
+          };
+        })
+      );
+      
+      res.json({ 
+        success: true, 
+        totalSites: stats.length,
+        activeSites: stats.filter(s => s.enabled).length,
+        stats 
+      });
+    } catch (error) {
+      console.error('Error getting site stats:', error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
