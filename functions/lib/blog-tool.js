@@ -750,14 +750,14 @@ ${products.map((product, index) => {
 `;
 }).join('\n')}
 </div>
+<!-- 商品ギャラリー終了 -->
 `;
 
-// contentに商品セクションを追加
+// ★★★ 修正箇所：不要な</div>を削除し、明確な区切りを追加 ★★★
 content = content + '\n\n' + productsSectionHTML + `
-</div>
-<!-- ############## 商品エリア完全終了 ############## -->
-<div style="clear: both; display: block; height: 80px; width: 100%;"></div>
-<!-- ############## 以下CTAエリア ############## -->
+<!-- ========== 商品エリア完全終了 ========== -->
+<div style="clear: both; display: block; height: 100px; width: 100%;"></div>
+<!-- ========== 以下、オープンチャットCTAエリア ========== -->
 `;
 
 // タイトル生成（既存のコード）
