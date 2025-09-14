@@ -5,72 +5,93 @@ const { OpenAI } = require('openai');
 const { addOpenChatCTAToArticle } = require('./openchat-cta-generator');
 
 class BlogTool {
-  constructor() {
-    const config = functions.config();
+  constructor(siteConfig = null) {
+  const config = functions.config();
+  
+  // サイト情報が渡された場合は、それを優先使用
+  if (siteConfig) {
+    console.log('🎯 Using custom site config:', siteConfig.name);
+    this.wordpressUrl = siteConfig.xmlrpcUrl || `${siteConfig.url}/xmlrpc.php`;
+    this.wordpressUser = siteConfig.username;
+    this.wordpressPassword = siteConfig.password;
+    this.siteName = siteConfig.name;
+    this.siteUrl = siteConfig.url;
+    this.siteId = siteConfig.id;
     
-    // デバッグ：設定値を確認
+    // DMM API設定（サイトごとに異なる場合）
+    this.dmmApiKey = siteConfig.dmmApiKey || config.dmm?.api_key;
+    this.dmmAffiliateId = siteConfig.dmmAffiliateId || config.dmm?.affiliate_id;
+  } else {
+    // デフォルト設定（既存のコード）
     console.log('🔍 Firebase config wordpress:', JSON.stringify(config.wordpress || {}, null, 2));
     
-    // Firebase configから直接取得（process.envは使わない）
     this.wordpressUrl = config.wordpress?.url || 'https://www.entamade.jp';
     this.wordpressUser = config.wordpress?.username || 'entamade';
-    this.wordpressPassword = config.wordpress?.password || 'IChL 1yMu 4OUF YpL6 Wz8d oxln"';
-    this.openaiApiKey = config.openai?.api_key || process.env.OPENAI_API_KEY;
-    
-    // デバッグ：設定された値を確認
-    console.log('📌 Set values:');
-    console.log('- wordpressUser:', this.wordpressUser || 'UNDEFINED');
-    console.log('- wordpressPassword:', this.wordpressPassword ? 'SET' : 'UNDEFINED');
-
-    if (!this.openaiApiKey) {
-      throw new Error('OpenAI API key not configured');
-    }
-
-    console.log('✅ BlogTool initialized successfully');
-    console.log('WordPress URL:', this.wordpressUrl);
-
-    this.openai = new OpenAI({
-      apiKey: this.openaiApiKey
-    });
-
-    this.blogId = 1;
-
-    // テンプレート定義
-    this.templates = {
-      entertainment: {
-        topic: '最新のエンタメニュース、芸能人の話題、テレビ番組情報',
-        tags: ['エンタメ', '芸能', '話題', 'トレンド', 'ニュース']
-      },
-      anime: {
-        topic: '注目のアニメ作品、声優情報、アニメイベント、新作情報',
-        tags: ['アニメ', 'オタク', '声優', '新作', '2025年']
-      },
-      game: {
-        topic: '人気ゲームの攻略情報、新作ゲーム情報、eスポーツの最新動向',
-        tags: ['ゲーム', 'eスポーツ', '攻略', 'レビュー', 'PS5']
-      },
-      movie: {
-        topic: '話題の映画レビュー、公開予定作品、映画館情報、興行収入',
-        tags: ['映画', '洋画', '邦画', 'Netflix', 'レビュー']
-      },
-      music: {
-        topic: '最新音楽ニュース、新曲リリース情報、ライブ・コンサート情報',
-        tags: ['音楽', 'J-POP', '新曲', 'ライブ', 'ランキング']
-      },
-      tech: {
-        topic: 'IT業界ニュース、最新ガジェット、AI技術、プログラミング',
-        tags: ['テクノロジー', 'IT', 'ガジェット', 'AI', 'プログラミング']
-      },
-      beauty: {
-        topic: '美容トレンド、スキンケア方法、メイクテクニック、コスメレビュー',
-        tags: ['美容', 'コスメ', 'スキンケア', 'メイク', 'トレンド']
-      },
-      food: {
-        topic: 'グルメ情報、人気レストラン、レシピ紹介、食のトレンド',
-        tags: ['グルメ', '料理', 'レシピ', '食べ物', 'レストラン']
-      }
-    };
+    this.wordpressPassword = config.wordpress?.password || 'IChL 1yMu 4OUF YpL6 Wz8d oxln';
+    this.siteName = 'エンタメイド';
+    this.siteUrl = 'https://www.entamade.jp';
+    this.siteId = 'entamade_jp';
   }
+  
+  // OpenAI APIキーは共通
+  this.openaiApiKey = config.openai?.api_key || process.env.OPENAI_API_KEY;
+  
+  // デバッグ：設定された値を確認
+  console.log('📌 Set values:');
+  console.log('- Site:', this.siteName || 'DEFAULT');
+  console.log('- wordpressUrl:', this.wordpressUrl);
+  console.log('- wordpressUser:', this.wordpressUser || 'UNDEFINED');
+  console.log('- wordpressPassword:', this.wordpressPassword ? 'SET' : 'UNDEFINED');
+  
+  if (!this.openaiApiKey) {
+    throw new Error('OpenAI API key not configured');
+  }
+  
+  console.log('✅ BlogTool initialized successfully');
+  console.log('WordPress URL:', this.wordpressUrl);
+  
+  this.openai = new OpenAI({
+    apiKey: this.openaiApiKey
+  });
+  
+  this.blogId = 1;
+  
+  // テンプレート定義（既存のまま）
+  this.templates = {
+    entertainment: {
+      topic: '最新のエンタメニュース、芸能人の話題、テレビ番組情報',
+      tags: ['エンタメ', '芸能', '話題', 'トレンド', 'ニュース']
+    },
+    anime: {
+      topic: '注目のアニメ作品、声優情報、アニメイベント、新作情報',
+      tags: ['アニメ', 'オタク', '声優', '新作', '2025年']
+    },
+    game: {
+      topic: '人気ゲームの攻略情報、新作ゲーム情報、eスポーツの最新動向',
+      tags: ['ゲーム', 'eスポーツ', '攻略', 'レビュー', 'PS5']
+    },
+    movie: {
+      topic: '話題の映画レビュー、公開予定作品、映画館情報、興行収入',
+      tags: ['映画', '洋画', '邦画', 'Netflix', 'レビュー']
+    },
+    music: {
+      topic: '最新音楽ニュース、新曲リリース情報、ライブ・コンサート情報',
+      tags: ['音楽', 'J-POP', '新曲', 'ライブ', 'ランキング']
+    },
+    tech: {
+      topic: 'IT業界ニュース、最新ガジェット、AI技術、プログラミング',
+      tags: ['テクノロジー', 'IT', 'ガジェット', 'AI', 'プログラミング']
+    },
+    beauty: {
+      topic: '美容トレンド、スキンケア方法、メイクテクニック、コスメレビュー',
+      tags: ['美容', 'コスメ', 'スキンケア', 'メイク', 'トレンド']
+    },
+    food: {
+      topic: 'グルメ情報、人気レストラン、レシピ紹介、食のトレンド',
+      tags: ['グルメ', '料理', 'レシピ', '食べ物', 'レストラン']
+    }
+  };
+}
 
   // XMLエスケープ（UTF-8対応）
   escapeXML(str) {
