@@ -956,6 +956,7 @@ const reviewCount = products[0].reviewCount || products[0].review?.count || '364
 
   determineCategory(products, title = '') {
     const categoryMap = {
+      'entamade_jp': {
       'anime': 2,
       'book': 8, 
       'comic': 9,
@@ -972,6 +973,27 @@ const reviewCount = products[0].reviewCount || products[0].review?.count || '364
       '美容': 32,
       '自己啓発': 169,
       '音楽': 121
+         },
+    　'GameinfoRuka_JP': {
+      'DMM': 20,  // デフォルトカテゴリー
+      'anime': 35,
+      'game': 36,  // GameinfoRukaではすべて未分類（ID:1）を使用
+      'コミック': 22,
+         },
+      'honlove_JP': {
+      'entertainment': 7,  // デフォルトカテゴリー
+      'anime': 8,
+      'game': 9,  // GameinfoRukaではすべて未分類（ID:1）を使用
+      'book': 2,
+      'コミック': 10,
+         },
+      'AnimeBook_JP': {
+      'entertainment': 6,  // デフォルトカテゴリー
+      'anime': 7,
+      'game': 8,  // GameinfoRukaではすべて未分類（ID:1）を使用
+      'book': 2,
+      'movie': 9,
+         },
       
     };
 
