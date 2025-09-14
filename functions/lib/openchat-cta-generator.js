@@ -1,5 +1,5 @@
 // functions/lib/openchat-cta-generator.js
-// 商品エリアとCTAエリアを完全分離する修正版
+// 商品エリアとCTAエリアを完全分離する最終版
 
 const functions = require('firebase-functions');
 
@@ -21,25 +21,21 @@ class OpenChatCTAGenerator {
   }
 
   /**
-   * 記事末尾のシンプルなCTA（商品エリアから完全独立）
+   * 記事末尾のシンプルなCTA
    */
   generateEndArticleCTA() {
     return `
-<!-- ========== 商品エリア完全終了の保証 ========== -->
-</div></div></div>
-<div style="clear: both; display: block; width: 100%; height: 80px;"></div>
-
 <!-- ========== LINEオープンチャット専用エリア開始 ========== -->
 <div id="line-openchat-cta" style="
   clear: both;
   display: block;
   width: 100%;
-  margin: 0;
+  margin: 60px 0 0 0;
   padding: 0;
   position: relative;
   z-index: 1000;">
   
-  <!-- CTAコンテナ（商品要素を一切含まない） -->
+  <!-- CTAコンテナ -->
   <div style="
     background: linear-gradient(135deg, #00B900 0%, #00D400 100%);
     border-radius: 20px;
@@ -49,8 +45,7 @@ class OpenChatCTAGenerator {
     text-align: center;
     box-shadow: 0 10px 30px rgba(0, 185, 0, 0.2);
     position: relative;
-    overflow: hidden;
-    isolation: isolate;">
+    overflow: hidden;">
     
     <h3 style="
       color: white;
@@ -67,7 +62,7 @@ class OpenChatCTAGenerator {
       お得な商品情報を配信中！
     </p>
     
-    <!-- LINE参加ボタンのみ（商品ボタンは絶対に含まない） -->
+    <!-- LINE参加ボタン -->
     <a style="
       display: inline-block;
       background: white;
@@ -94,6 +89,7 @@ class OpenChatCTAGenerator {
       またはQRコードで参加
     </p>
     
+    <!-- QRコード表示ボタン -->
     <button style="
       background: rgba(255,255,255,0.2);
       color: white;
@@ -130,51 +126,40 @@ function showQRCode() {
   }
 
   /**
-   * 記事にCTAを追加（商品エリアを確実に避ける）
+   * 記事にCTAを追加
    */
   addCTAToArticle(content) {
     try {
-      let modifiedContent = content;
-      
-      // 商品エリアのパターンを検出
-      const productPatterns = [
-        /<div[^>]*class="[^"]*product[^"]*"[^>]*>[\s\S]*?<\/div>/gi,
-        /<a[^>]*href="[^"]*fanza[^"]*"[^>]*>[\s\S]*?<\/a>/gi,
-        /<a[^>]*class="[^"]*affiliate[^"]*"[^>]*>[\s\S]*?<\/a>/gi,
-        /詳細を見る|購入する|今すぐチェック/gi
+      // 商品エリアの終了マーカーを探す
+      const endMarkers = [
+        '<!-- ========== 商品エリア完全終了 ========== -->',
+        '<!-- ############## 商品エリア完全終了 ############## -->',
+        '<!-- 商品ギャラリー終了 -->'
       ];
       
-      // 最後の商品関連要素の位置を特定
-      let lastProductIndex = -1;
-      productPatterns.forEach(pattern => {
-        const matches = [...modifiedContent.matchAll(pattern)];
-        if (matches.length > 0) {
-          const lastMatch = matches[matches.length - 1];
-          const endIndex = lastMatch.index + lastMatch[0].length;
-          if (endIndex > lastProductIndex) {
-            lastProductIndex = endIndex;
-          }
+      let hasProductArea = false;
+      for (const marker of endMarkers) {
+        if (content.includes(marker)) {
+          hasProductArea = true;
+          console.log('商品エリア終了マーカーを検出:', marker);
+          break;
         }
-      });
-      
-      // 商品エリアが存在する場合、その後にCTAを追加
-      if (lastProductIndex > -1) {
-        // 商品エリアの後に明確な区切りを挿入してからCTAを追加
-        modifiedContent = 
-          modifiedContent.slice(0, lastProductIndex) + 
-          '\n<!-- 商品エリア終了 -->\n' +
-          modifiedContent.slice(lastProductIndex) +
-          this.generateEndArticleCTA();
-      } else {
-        // 商品エリアがない場合は記事末尾に追加
-        modifiedContent += this.generateEndArticleCTA();
       }
       
-      return modifiedContent;
+      // 商品エリアがある場合は、すでに適切な位置にCTAが追加されるはず
+      if (hasProductArea) {
+        // CTAがまだ追加されていない場合のみ追加
+        if (!content.includes('line-openchat-cta')) {
+          return content + this.generateEndArticleCTA();
+        }
+        return content;
+      }
+      
+      // 商品エリアがない通常の記事の場合
+      return content + this.generateEndArticleCTA();
       
     } catch (error) {
       console.error('Error adding CTA to article:', error);
-      // エラー時は元のコンテンツに末尾CTAだけ追加
       return content + this.generateEndArticleCTA();
     }
   }
