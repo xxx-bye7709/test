@@ -955,8 +955,8 @@ const reviewCount = products[0].reviewCount || products[0].review?.count || '364
   }
 
   determineCategory(products, title = '') {
-    const categoryMap = {
-      'entamade_jp': {
+  const categoryMap = {
+    'entamade_jp': {
       'anime': 2,
       'book': 8, 
       'comic': 9,
@@ -973,41 +973,68 @@ const reviewCount = products[0].reviewCount || products[0].review?.count || '364
       '美容': 32,
       '自己啓発': 169,
       '音楽': 121
-         },
-    　'GameinfoRuka_JP': {
-      'DMM': 20,  // デフォルトカテゴリー
+    },
+    'GameinfoRuka_JP': {
+      'DMM': 20,
       'anime': 35,
-      'game': 36,  // GameinfoRukaではすべて未分類（ID:1）を使用
+      'game': 36,
       'コミック': 22,
-         },
-      'honlove_JP': {
-      'entertainment': 7,  // デフォルトカテゴリー
+      'default': 20  // デフォルト追加
+    },
+    'honlove_JP': {
+      'entertainment': 7,
       'anime': 8,
-      'game': 9,  // GameinfoRukaではすべて未分類（ID:1）を使用
+      'game': 9,
       'book': 2,
       'コミック': 10,
-         },
-      'AnimeBook_JP': {
-      'entertainment': 6,  // デフォルトカテゴリー
+      'default': 7  // デフォルト追加
+    },
+    'AnimeBook_JP': {
+      'entertainment': 6,
       'anime': 7,
-      'game': 8,  // GameinfoRukaではすべて未分類（ID:1）を使用
+      'game': 8,
       'book': 2,
       'movie': 9,
-         },
-      
-    };
-
-    const text = (title + ' ' + products.map(p => p.title || '').join(' ')).toLowerCase();
-    
-    if (text.includes('アニメ') || text.includes('anime')) return categoryMap['アニメ'];
-    if (text.includes('ゲーム') || text.includes('game')) return categoryMap['ゲーム'];
-    if (text.includes('映画') || text.includes('movie')) return categoryMap['映画'];
-    if (text.includes('アイドル') || text.includes('idol')) return categoryMap['アイドル'];
-    if (text.includes('グラビア')) return categoryMap['グラビア'];
-    if (text.includes('アダルト') || text.includes('18')) return categoryMap['アダルト'];
-    
-    return categoryMap['エンタメ'];
+      'default': 6  // デフォルト追加
+    }
+  };
+  
+  // 現在のサイトのカテゴリーマップを取得
+  const siteCategories = categoryMap[this.siteId] || categoryMap['entamade_jp'];
+  console.log(`📁 Using category map for site: ${this.siteId || 'entamade_jp'}`);
+  
+  // タイトルとproductsからテキストを作成
+  const text = (title + ' ' + products.map(p => p.title || '').join(' ')).toLowerCase();
+  
+  // カテゴリー判定（サイトごとのマップを使用）
+  if (text.includes('アニメ') || text.includes('anime')) {
+    return siteCategories['anime'] || siteCategories['アニメ'] || siteCategories['default'] || 1;
   }
+  if (text.includes('ゲーム') || text.includes('game')) {
+    return siteCategories['game'] || siteCategories['ゲーム'] || siteCategories['default'] || 1;
+  }
+  if (text.includes('映画') || text.includes('movie')) {
+    return siteCategories['movie'] || siteCategories['映画'] || siteCategories['default'] || 1;
+  }
+  if (text.includes('本') || text.includes('book')) {
+    return siteCategories['book'] || siteCategories['default'] || 1;
+  }
+  if (text.includes('コミック') || text.includes('comic')) {
+    return siteCategories['comic'] || siteCategories['コミック'] || siteCategories['default'] || 1;
+  }
+  if (text.includes('アイドル') || text.includes('idol')) {
+    return siteCategories['idol'] || siteCategories['アイドル'] || siteCategories['default'] || 1;
+  }
+  if (text.includes('グラビア') || text.includes('gravure')) {
+    return siteCategories['gravure'] || siteCategories['グラビア'] || siteCategories['default'] || 1;
+  }
+  if (text.includes('アダルト') || text.includes('adult')) {
+    return siteCategories['R18'] || siteCategories['R18'] || siteCategories['default'] || 1;
+  }
+  
+  // デフォルトカテゴリーを返す
+  return siteCategories['default'] || siteCategories['エンタメ'] || siteCategories['entertainment'] || 1;
+}
 
 }
 
