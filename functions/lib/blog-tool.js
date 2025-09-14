@@ -441,6 +441,28 @@ class BlogTool {
                 found: !!postId,
                 postId: postId
               });
+
+              if (postId) {
+            // Firestoreに投稿記録を保存（非同期だがawaitしない）
+            const admin = require('firebase-admin');
+            admin.firestore().collection('generatedArticles').add({
+              title: title,
+              postId: postId,
+              postUrl: `${this.siteUrl || this.wordpressUrl}/?p=${postId}`,
+              targetSite: this.siteId || 'entamade_jp',  // constructorで設定されたsiteId
+              siteName: this.siteName || 'エンタメイド',  // constructorで設定されたsiteName
+              siteUrl: this.siteUrl || this.wordpressUrl,
+              category: category,
+              tags: tags,
+              isProductReview: isProductReview,
+              featuredImageId: featuredImageId,
+              createdAt: admin.firestore.FieldValue.serverTimestamp()
+            }).then(() => {
+              console.log(`📝 Article recorded in Firestore for site: ${this.siteName}`);
+            }).catch(err => {
+              console.error('Failed to save to Firestore:', err);
+            });
+          }
               
               resolve({
                 success: true,
