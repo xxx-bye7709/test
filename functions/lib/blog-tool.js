@@ -92,6 +92,168 @@ class BlogTool {
   };
 }
 
+  // ==========================================
+// SEO最適化メソッド群
+// ==========================================
+
+// 1. SEOタイトル生成メソッド
+async generateSEOTitle(category, keyword = null) {
+  const year = new Date().getFullYear();
+  const month = new Date().getMonth() + 1;
+  
+  console.log('🎯 Generating SEO optimized title for:', { category, keyword });
+  
+  // カテゴリー別のタイトルテンプレート
+  const titleTemplates = {
+    entertainment: [
+      `【${year}年${month}月最新】注目の芸能ニュース${Math.floor(Math.random() * 5) + 5}選｜${keyword || 'トレンド'}まとめ`,
+      `【速報】${keyword || '芸能界'}の最新情報${Math.floor(Math.random() * 3) + 3}つ｜${year}年${month}月版`,
+      `${keyword || 'エンタメ'}業界の衝撃ニュースTOP${Math.floor(Math.random() * 3) + 5}【${year}年最新】`
+    ],
+    anime: [
+      `【${year}年${month}月】今期アニメおすすめ${Math.floor(Math.random() * 5) + 10}選｜${keyword || '覇権'}作品徹底解説`,
+      `【最新】${keyword || '人気アニメ'}ランキングTOP${Math.floor(Math.random() * 5) + 15}｜${year}年完全ガイド`,
+      `${year}年注目の${keyword || 'アニメ'}作品${Math.floor(Math.random() * 5) + 5}選｜声優・放送情報まとめ`
+    ],
+    game: [
+      `【${year}年${month}月】${keyword || '最新ゲーム'}攻略法${Math.floor(Math.random() * 3) + 5}選｜プロが教える必勝テク`,
+      `【神ゲー】${year}年おすすめゲームTOP${Math.floor(Math.random() * 5) + 20}｜${keyword || 'ジャンル別'}完全ガイド`,
+      `${keyword || 'ゲーム'}最強キャラランキング${Math.floor(Math.random() * 10) + 30}｜${year}年${month}月最新版`
+    ],
+    DMM: [
+      `【${year}年${month}月】${keyword || 'DMM'}の注目作品${Math.floor(Math.random() * 5) + 10}選｜最新ランキング`,
+      `${keyword || 'DMM'}おすすめ商品TOP${Math.floor(Math.random() * 10) + 20}【${year}年最新版】`,
+      `【保存版】${keyword || 'DMM'}完全ガイド${year}｜人気作品まとめ`
+    ]
+  };
+
+  // デフォルトテンプレート
+  const defaultTemplates = [
+    `【${year}年${month}月最新】${keyword || category}の注目情報${Math.floor(Math.random() * 5) + 5}選`,
+    `${keyword || category}完全ガイド【${year}年版】おすすめTOP${Math.floor(Math.random() * 5) + 10}`,
+    `【保存版】${year}年${keyword || category}まとめ｜最新トレンド解説`
+  ];
+
+  try {
+    // カテゴリーに応じたテンプレートを選択
+    const templates = titleTemplates[category] || defaultTemplates;
+    const baseTemplate = templates[Math.floor(Math.random() * templates.length)];
+    
+    // GPT-5-miniでより洗練されたタイトルを生成
+    const prompt = `
+以下の条件でSEOに最適化された魅力的なブログタイトルを1つ生成してください：
+
+【必須要件】
+- 文字数: 32-40文字（全角換算）
+- カテゴリー: ${category}
+- キーワード: ${keyword || this.templates[category]?.topic || category}
+- 年月: ${year}年${month}月を自然に含める
+
+【タイトルに含めるべき要素】
+1. 具体的な数字（5選、TOP10、${year}年など）
+2. 感情に訴える言葉（衝撃、必見、神など）
+3. ベネフィット（読者が得られる価値）
+4. 【】や｜を使った視覚的な区切り
+
+【参考テンプレート】
+${baseTemplate}
+
+タイトルのみを出力してください。`;
+
+    const completion = await this.openai.chat.completions.create({
+      model: "gpt-5-mini",
+      messages: [
+        {
+          role: "system",
+          content: "あなたはSEOとコピーライティングの専門家です。日本のブログで高いクリック率を達成するタイトルを作成します。"
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      max_completion_tokens: 100
+    });
+
+    let title = completion.choices[0]?.message?.content?.trim() || baseTemplate;
+    
+    // 文字数調整
+    title = this.adjustTitleLength(title);
+    
+    console.log('✅ SEO Title generated:', title);
+    console.log('📏 Title length:', this.getFullWidthLength(title), 'characters');
+    
+    return title;
+    
+  } catch (error) {
+    console.error('Error generating SEO title:', error);
+    // フォールバック
+    const templates = titleTemplates[category] || defaultTemplates;
+    return templates[Math.floor(Math.random() * templates.length)];
+  }
+}
+
+// 2. タイトル長調整メソッド
+adjustTitleLength(title) {
+  const targetMin = 32;
+  const targetMax = 40;
+  const currentLength = this.getFullWidthLength(title);
+  
+  if (currentLength > targetMax) {
+    let truncated = '';
+    let len = 0;
+    for (let i = 0; i < title.length; i++) {
+      const charLen = title.charCodeAt(i) > 255 ? 1 : 0.5;
+      if (len + charLen > targetMax - 1.5) break;
+      truncated += title[i];
+      len += charLen;
+    }
+    return truncated + '…';
+  }
+  
+  return title;
+}
+
+// 3. 全角換算の文字数カウント
+getFullWidthLength(str) {
+  let length = 0;
+  for (let i = 0; i < str.length; i++) {
+    length += str.charCodeAt(i) > 255 ? 1 : 0.5;
+  }
+  return Math.ceil(length);
+}
+
+// 4. SEO最適化されたタグ生成
+generateSEOTags(keyword, category, title) {
+  const year = new Date().getFullYear();
+  const month = new Date().getMonth() + 1;
+  
+  // 基本タグ
+  const tags = new Set([
+    keyword,
+    `${year}年`,
+    `${year}年${month}月`,
+    '最新情報',
+    'まとめ'
+  ]);
+  
+  // カテゴリー別の追加タグ
+  const categoryTags = this.templates[category]?.tags || [];
+  categoryTags.forEach(tag => tags.add(tag));
+  
+  // タイトルから重要な単語を抽出
+  const titleWords = title
+    .replace(/[【】\[\]（）\(\)｜\|]/g, ' ')
+    .split(/[\s、。]/)
+    .filter(word => word.length > 2)
+    .filter(word => !['年', '月', '最新', 'まとめ', '選', 'TOP', 'ランキング'].includes(word));
+  
+  titleWords.forEach(word => tags.add(word));
+  
+  // 配列に変換して最大15個まで
+  return Array.from(tags).filter(tag => tag).slice(0, 15);
+}
+
   // XMLエスケープ（UTF-8対応）
   escapeXML(str) {
     if (!str) return '';
@@ -559,7 +721,88 @@ ${categoryData.topic}について、${year}年${month}月時点の最新情報�
   // 記事生成（カテゴリー別）
   async generateArticle(category = 'entertainment', options = {}) {
   try {
-    console.log(`📝 Generating ${category} article...`);
+    console.log(`🚀 Generating ${category} article with SEO optimization...`);
+    
+    // キーワードの抽出または設定
+    const keyword = options.keyword || 
+                    this.templates[category]?.topic?.split('、')[0] || 
+                    category;
+    
+    // ★ 新しいSEOタイトル生成を使用
+    const title = await this.generateSEOTitle(category, keyword);
+    
+    // GPTでコンテンツ生成（既存のメソッドを使用）
+    const content = await this.generateWithGPT(category, options.template);
+    
+    console.log('✅ Article generated successfully');
+    console.log('📌 Title:', title);
+    console.log('🔑 Focus Keyword:', keyword);
+    console.log('📄 Content length:', content.length);
+    
+    // 画像生成（既存のコード）
+    let finalContent = content;
+    let featuredImageUrl = null;
+    
+    // 画像生成を有効化（デフォルトは有効）
+    if (options.generateImage !== false) {
+      try {
+        const ImageGenerator = require('./image-generator');
+        const imageGen = new ImageGenerator(this.openaiApiKey);
+        
+        // タイトルを基にした画像プロンプト
+        const imagePrompt = `Professional blog header image for ${category} article: "${title}". Modern, vibrant, high quality, digital art style, no text.`;
+        
+        console.log('🎨 Generating featured image...');
+        featuredImageUrl = await imageGen.generateImage(imagePrompt, '1792x1024', 'standard');
+        
+        if (featuredImageUrl) {
+          console.log('✅ Featured image generated');
+          const imageHtml = `<div style="text-align: center; margin: 20px 0;">
+<img src="${featuredImageUrl}" alt="${title}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+</div>\n\n`;
+          finalContent = imageHtml + content;
+        }
+      } catch (imageError) {
+        console.error('⚠️ Image generation failed, continuing without image:', imageError.message);
+      }
+    }
+    
+    // ★ SEO最適化されたタグを生成
+    const optimizedTags = this.generateSEOTags(keyword, category, title);
+    
+    return {
+      title: title,
+      content: finalContent,
+      keyword: keyword,  // ★ キーワードを追加
+      category: category,
+      tags: optimizedTags,
+      status: options.status || 'publish',
+      featuredImageUrl: featuredImageUrl,
+      seoData: {  // ★ SEOデータを追加
+        focusKeyphrase: keyword,
+        metaDescription: this.generateMetaDescription(title, keyword),
+        titleLength: this.getFullWidthLength(title)
+      }
+    };
+    
+  } catch (error) {
+    console.error('❌ Error generating article:', error);
+    throw error;
+  }
+}
+
+// メタディスクリプション生成（新規追加）
+generateMetaDescription(title, keyword) {
+  const year = new Date().getFullYear();
+  const templates = [
+    `${title}を徹底解説。${keyword}の最新情報を${year}年版でお届け。今すぐチェックして最新トレンドを把握しましょう。`,
+    `【${year}年最新】${keyword}について詳しく解説。${title}の全情報をまとめました。必見の内容です。`,
+    `${keyword}の決定版ガイド。${title}を完全網羅。${year}年の最新情報満載でお届けします。`
+  ];
+  
+  const description = templates[Math.floor(Math.random() * templates.length)];
+  return description.substring(0, 155); // 155文字以内
+}
     
     // GPTで本文生成
     const content = await this.generateWithGPT(category, options.template);
