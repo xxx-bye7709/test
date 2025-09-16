@@ -54,9 +54,9 @@ function initializeServices() {
 }
 
 // === ヘルパー関数 ===
-const generateArticleForCategory = async (category) => {
+const generateArticleForCategory = async (category, targetSite = null) => {
   loadModules();
-  // targetSiteが指定されている場合、サイト情報を取得
+  
   let siteConfig = null;
   if (targetSite) {
     const siteDoc = await admin.firestore()
@@ -65,8 +65,11 @@ const generateArticleForCategory = async (category) => {
       .get();
     
     if (siteDoc.exists) {
-      siteConfig = siteDoc.data();
-      console.log(`Using site: ${siteConfig.name} for ${category} article`);
+      siteConfig = {
+        ...siteDoc.data(),
+        id: siteDoc.id  // ⚠️ この行を追加！ドキュメントIDをidとして追加
+      };
+      console.log(`Using site: ${siteConfig.name} (ID: ${siteConfig.id}) for ${category} article`);
     }
   }
   
@@ -321,7 +324,7 @@ exports.generateEntertainmentArticle = functions
     return cors(req, res, async () => {
       try {
         const targetSite = req.body?.targetSite || null; // targetSiteを取得
-        const result = await generateArticleForCategory('entertainment', targetSite);
+        const result = await generateArticleForCategory('entertainment', targetSite, targetSite);
         res.json({ 
           success: true, 
           targetSite: targetSite,
@@ -362,13 +365,9 @@ exports.generateGameArticle = functions
   .https.onRequest(async (req, res) => {
     return cors(req, res, async () => {
       try {
-        const targetSite = req.body?.targetSite || null; // targetSiteを取得
-        const result = await generateArticleForCategory('entertainment', targetSite);
-        res.json({ 
-          success: true, 
-          targetSite: targetSite,
-          ...result 
-        });
+        const targetSite = req.body?.targetSite || null; // 追加
+        const result = await generateArticleForCategory('game', targetSite); // 修正
+        res.json({ success: true, targetSite, ...result }); // targetSite追加
       } catch (error) {
         console.error('Error:', error);
         res.status(500).json({ success: false, error: error.message });
@@ -3468,4 +3467,5 @@ exports.getSiteStats = functions
       res.status(500).json({ success: false, error: error.message });
     }
   });
+
 
