@@ -8,7 +8,6 @@ class BlogTool {
   constructor(siteConfig = null) {
   const config = functions.config();
   
-  // サイト情報が渡された場合は、それを優先使用
   if (siteConfig) {
     console.log('🎯 Using custom site config:', siteConfig.name);
     this.wordpressUrl = siteConfig.xmlrpcUrl || `${siteConfig.url}/xmlrpc.php`;
@@ -16,7 +15,7 @@ class BlogTool {
     this.wordpressPassword = siteConfig.password;
     this.siteName = siteConfig.name;
     this.siteUrl = siteConfig.url;
-    this.siteId = siteConfig.id;
+    this.siteId = siteConfig.id || 'entamade_jp';  // ⚠️ ここが重要！idが渡されていない
     
     // DMM API設定（サイトごとに異なる場合）
     this.dmmApiKey = siteConfig.dmmApiKey || config.dmm?.api_key;
