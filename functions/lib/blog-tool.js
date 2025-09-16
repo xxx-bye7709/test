@@ -1,4 +1,4 @@
-// functions/lib/blog-tool.js - 完全版
+// functions/lib/blog-tool.js - 完全修正版
 const functions = require('firebase-functions');
 const xmlrpc = require('xmlrpc');
 const { OpenAI } = require('openai');
@@ -6,141 +6,141 @@ const { addOpenChatCTAToArticle } = require('./openchat-cta-generator');
 
 class BlogTool {
   constructor(siteConfig = null) {
-  const config = functions.config();
-  
-  if (siteConfig) {
-    console.log('🎯 Using custom site config:', siteConfig.name);
-    this.wordpressUrl = siteConfig.xmlrpcUrl || `${siteConfig.url}/xmlrpc.php`;
-    this.wordpressUser = siteConfig.username;
-    this.wordpressPassword = siteConfig.password;
-    this.siteName = siteConfig.name;
-    this.siteUrl = siteConfig.url;
-    this.siteId = siteConfig.id || 'entamade_jp';  // ⚠️ ここが重要！idが渡されていない
+    const config = functions.config();
     
-    // DMM API設定（サイトごとに異なる場合）
-    this.dmmApiKey = siteConfig.dmmApiKey || config.dmm?.api_key;
-    this.dmmAffiliateId = siteConfig.dmmAffiliateId || config.dmm?.affiliate_id;
-  } else {
-    // デフォルト設定（既存のコード）
-    console.log('🔍 Firebase config wordpress:', JSON.stringify(config.wordpress || {}, null, 2));
-    
-    this.wordpressUrl = config.wordpress?.url || 'https://www.entamade.jp';
-    this.wordpressUser = config.wordpress?.username || 'entamade';
-    this.wordpressPassword = config.wordpress?.password || 'IChL 1yMu 4OUF YpL6 Wz8d oxln';
-    this.siteName = 'エンタメイド';
-    this.siteUrl = 'https://www.entamade.jp';
-    this.siteId = 'entamade_jp';
-  }
-  
-  // OpenAI APIキーは共通
-  this.openaiApiKey = config.openai?.api_key || process.env.OPENAI_API_KEY;
-  
-  // デバッグ：設定された値を確認
-  console.log('📌 Set values:');
-  console.log('- Site:', this.siteName || 'DEFAULT');
-  console.log('- wordpressUrl:', this.wordpressUrl);
-  console.log('- wordpressUser:', this.wordpressUser || 'UNDEFINED');
-  console.log('- wordpressPassword:', this.wordpressPassword ? 'SET' : 'UNDEFINED');
-  
-  if (!this.openaiApiKey) {
-    throw new Error('OpenAI API key not configured');
-  }
-  
-  console.log('✅ BlogTool initialized successfully');
-  console.log('WordPress URL:', this.wordpressUrl);
-  
-  this.openai = new OpenAI({
-    apiKey: this.openaiApiKey
-  });
-  
-  this.blogId = 1;
-  
-  // テンプレート定義（既存のまま）
-  this.templates = {
-    entertainment: {
-      topic: '最新のエンタメニュース、芸能人の話題、テレビ番組情報',
-      tags: ['エンタメ', '芸能', '話題', 'トレンド', 'ニュース']
-    },
-    anime: {
-      topic: '注目のアニメ作品、声優情報、アニメイベント、新作情報',
-      tags: ['アニメ', 'オタク', '声優', '新作', '2025年']
-    },
-    game: {
-      topic: '人気ゲームの攻略情報、新作ゲーム情報、eスポーツの最新動向',
-      tags: ['ゲーム', 'eスポーツ', '攻略', 'レビュー', 'PS5']
-    },
-    movie: {
-      topic: '話題の映画レビュー、公開予定作品、映画館情報、興行収入',
-      tags: ['映画', '洋画', '邦画', 'Netflix', 'レビュー']
-    },
-    music: {
-      topic: '最新音楽ニュース、新曲リリース情報、ライブ・コンサート情報',
-      tags: ['音楽', 'J-POP', '新曲', 'ライブ', 'ランキング']
-    },
-    tech: {
-      topic: 'IT業界ニュース、最新ガジェット、AI技術、プログラミング',
-      tags: ['テクノロジー', 'IT', 'ガジェット', 'AI', 'プログラミング']
-    },
-    beauty: {
-      topic: '美容トレンド、スキンケア方法、メイクテクニック、コスメレビュー',
-      tags: ['美容', 'コスメ', 'スキンケア', 'メイク', 'トレンド']
-    },
-    food: {
-      topic: 'グルメ情報、人気レストラン、レシピ紹介、食のトレンド',
-      tags: ['グルメ', '料理', 'レシピ', '食べ物', 'レストラン']
+    if (siteConfig) {
+      console.log('🎯 Using custom site config:', siteConfig.name);
+      this.wordpressUrl = siteConfig.xmlrpcUrl || `${siteConfig.url}/xmlrpc.php`;
+      this.wordpressUser = siteConfig.username;
+      this.wordpressPassword = siteConfig.password;
+      this.siteName = siteConfig.name;
+      this.siteUrl = siteConfig.url;
+      this.siteId = siteConfig.id || 'entamade_jp';
+      
+      // DMM API設定（サイトごとに異なる場合）
+      this.dmmApiKey = siteConfig.dmmApiKey || config.dmm?.api_key;
+      this.dmmAffiliateId = siteConfig.dmmAffiliateId || config.dmm?.affiliate_id;
+    } else {
+      // デフォルト設定（既存のコード）
+      console.log('🔍 Firebase config wordpress:', JSON.stringify(config.wordpress || {}, null, 2));
+      
+      this.wordpressUrl = config.wordpress?.url || 'https://www.entamade.jp';
+      this.wordpressUser = config.wordpress?.username || 'entamade';
+      this.wordpressPassword = config.wordpress?.password || 'IChL 1yMu 4OUF YpL6 Wz8d oxln';
+      this.siteName = 'エンタメイド';
+      this.siteUrl = 'https://www.entamade.jp';
+      this.siteId = 'entamade_jp';
     }
-  };
-}
+    
+    // OpenAI APIキーは共通
+    this.openaiApiKey = config.openai?.api_key || process.env.OPENAI_API_KEY;
+    
+    // デバッグ：設定された値を確認
+    console.log('📌 Set values:');
+    console.log('- Site:', this.siteName || 'DEFAULT');
+    console.log('- wordpressUrl:', this.wordpressUrl);
+    console.log('- wordpressUser:', this.wordpressUser || 'UNDEFINED');
+    console.log('- wordpressPassword:', this.wordpressPassword ? 'SET' : 'UNDEFINED');
+    
+    if (!this.openaiApiKey) {
+      throw new Error('OpenAI API key not configured');
+    }
+    
+    console.log('✅ BlogTool initialized successfully');
+    console.log('WordPress URL:', this.wordpressUrl);
+    
+    this.openai = new OpenAI({
+      apiKey: this.openaiApiKey
+    });
+    
+    this.blogId = 1;
+    
+    // テンプレート定義（既存のまま）
+    this.templates = {
+      entertainment: {
+        topic: '最新のエンタメニュース、芸能人の話題、テレビ番組情報',
+        tags: ['エンタメ', '芸能', '話題', 'トレンド', 'ニュース']
+      },
+      anime: {
+        topic: '注目のアニメ作品、声優情報、アニメイベント、新作情報',
+        tags: ['アニメ', 'オタク', '声優', '新作', '2025年']
+      },
+      game: {
+        topic: '人気ゲームの攻略情報、新作ゲーム情報、eスポーツの最新動向',
+        tags: ['ゲーム', 'eスポーツ', '攻略', 'レビュー', 'PS5']
+      },
+      movie: {
+        topic: '話題の映画レビュー、公開予定作品、映画館情報、興行収入',
+        tags: ['映画', '洋画', '邦画', 'Netflix', 'レビュー']
+      },
+      music: {
+        topic: '最新音楽ニュース、新曲リリース情報、ライブ・コンサート情報',
+        tags: ['音楽', 'J-POP', '新曲', 'ライブ', 'ランキング']
+      },
+      tech: {
+        topic: 'IT業界ニュース、最新ガジェット、AI技術、プログラミング',
+        tags: ['テクノロジー', 'IT', 'ガジェット', 'AI', 'プログラミング']
+      },
+      beauty: {
+        topic: '美容トレンド、スキンケア方法、メイクテクニック、コスメレビュー',
+        tags: ['美容', 'コスメ', 'スキンケア', 'メイク', 'トレンド']
+      },
+      food: {
+        topic: 'グルメ情報、人気レストラン、レシピ紹介、食のトレンド',
+        tags: ['グルメ', '料理', 'レシピ', '食べ物', 'レストラン']
+      }
+    };
+  }
 
   // ==========================================
-// SEO最適化メソッド群
-// ==========================================
+  // SEO最適化メソッド群
+  // ==========================================
 
-// 1. SEOタイトル生成メソッド
-async generateSEOTitle(category, keyword = null) {
-  const year = new Date().getFullYear();
-  const month = new Date().getMonth() + 1;
-  
-  console.log('🎯 Generating SEO optimized title for:', { category, keyword });
-  
-  // カテゴリー別のタイトルテンプレート
-  const titleTemplates = {
-    entertainment: [
-      `【${year}年${month}月最新】注目の芸能ニュース${Math.floor(Math.random() * 5) + 5}選｜${keyword || 'トレンド'}まとめ`,
-      `【速報】${keyword || '芸能界'}の最新情報${Math.floor(Math.random() * 3) + 3}つ｜${year}年${month}月版`,
-      `${keyword || 'エンタメ'}業界の衝撃ニュースTOP${Math.floor(Math.random() * 3) + 5}【${year}年最新】`
-    ],
-    anime: [
-      `【${year}年${month}月】今期アニメおすすめ${Math.floor(Math.random() * 5) + 10}選｜${keyword || '覇権'}作品徹底解説`,
-      `【最新】${keyword || '人気アニメ'}ランキングTOP${Math.floor(Math.random() * 5) + 15}｜${year}年完全ガイド`,
-      `${year}年注目の${keyword || 'アニメ'}作品${Math.floor(Math.random() * 5) + 5}選｜声優・放送情報まとめ`
-    ],
-    game: [
-      `【${year}年${month}月】${keyword || '最新ゲーム'}攻略法${Math.floor(Math.random() * 3) + 5}選｜プロが教える必勝テク`,
-      `【神ゲー】${year}年おすすめゲームTOP${Math.floor(Math.random() * 5) + 20}｜${keyword || 'ジャンル別'}完全ガイド`,
-      `${keyword || 'ゲーム'}最強キャラランキング${Math.floor(Math.random() * 10) + 30}｜${year}年${month}月最新版`
-    ],
-    DMM: [
-      `【${year}年${month}月】${keyword || 'DMM'}の注目作品${Math.floor(Math.random() * 5) + 10}選｜最新ランキング`,
-      `${keyword || 'DMM'}おすすめ商品TOP${Math.floor(Math.random() * 10) + 20}【${year}年最新版】`,
-      `【保存版】${keyword || 'DMM'}完全ガイド${year}｜人気作品まとめ`
-    ]
-  };
-
-  // デフォルトテンプレート
-  const defaultTemplates = [
-    `【${year}年${month}月最新】${keyword || category}の注目情報${Math.floor(Math.random() * 5) + 5}選`,
-    `${keyword || category}完全ガイド【${year}年版】おすすめTOP${Math.floor(Math.random() * 5) + 10}`,
-    `【保存版】${year}年${keyword || category}まとめ｜最新トレンド解説`
-  ];
-
-  try {
-    // カテゴリーに応じたテンプレートを選択
-    const templates = titleTemplates[category] || defaultTemplates;
-    const baseTemplate = templates[Math.floor(Math.random() * templates.length)];
+  // 1. SEOタイトル生成メソッド
+  async generateSEOTitle(category, keyword = null) {
+    const year = new Date().getFullYear();
+    const month = new Date().getMonth() + 1;
     
-    // GPT-5-miniでより洗練されたタイトルを生成
-    const prompt = `
+    console.log('🎯 Generating SEO optimized title for:', { category, keyword });
+    
+    // カテゴリー別のタイトルテンプレート
+    const titleTemplates = {
+      entertainment: [
+        `【${year}年${month}月最新】注目の芸能ニュース${Math.floor(Math.random() * 5) + 5}選｜${keyword || 'トレンド'}まとめ`,
+        `【速報】${keyword || '芸能界'}の最新情報${Math.floor(Math.random() * 3) + 3}つ｜${year}年${month}月版`,
+        `${keyword || 'エンタメ'}業界の衝撃ニュースTOP${Math.floor(Math.random() * 3) + 5}【${year}年最新】`
+      ],
+      anime: [
+        `【${year}年${month}月】今期アニメおすすめ${Math.floor(Math.random() * 5) + 10}選｜${keyword || '覇権'}作品徹底解説`,
+        `【最新】${keyword || '人気アニメ'}ランキングTOP${Math.floor(Math.random() * 5) + 15}｜${year}年完全ガイド`,
+        `${year}年注目の${keyword || 'アニメ'}作品${Math.floor(Math.random() * 5) + 5}選｜声優・放送情報まとめ`
+      ],
+      game: [
+        `【${year}年${month}月】${keyword || '最新ゲーム'}攻略法${Math.floor(Math.random() * 3) + 5}選｜プロが教える必勝テク`,
+        `【神ゲー】${year}年おすすめゲームTOP${Math.floor(Math.random() * 5) + 20}｜${keyword || 'ジャンル別'}完全ガイド`,
+        `${keyword || 'ゲーム'}最強キャラランキング${Math.floor(Math.random() * 10) + 30}｜${year}年${month}月最新版`
+      ],
+      DMM: [
+        `【${year}年${month}月】${keyword || 'DMM'}の注目作品${Math.floor(Math.random() * 5) + 10}選｜最新ランキング`,
+        `${keyword || 'DMM'}おすすめ商品TOP${Math.floor(Math.random() * 10) + 20}【${year}年最新版】`,
+        `【保存版】${keyword || 'DMM'}完全ガイド${year}｜人気作品まとめ`
+      ]
+    };
+
+    // デフォルトテンプレート
+    const defaultTemplates = [
+      `【${year}年${month}月最新】${keyword || category}の注目情報${Math.floor(Math.random() * 5) + 5}選`,
+      `${keyword || category}完全ガイド【${year}年版】おすすめTOP${Math.floor(Math.random() * 5) + 10}`,
+      `【保存版】${year}年${keyword || category}まとめ｜最新トレンド解説`
+    ];
+
+    try {
+      // カテゴリーに応じたテンプレートを選択
+      const templates = titleTemplates[category] || defaultTemplates;
+      const baseTemplate = templates[Math.floor(Math.random() * templates.length)];
+      
+      // GPT-5-miniでより洗練されたタイトルを生成
+      const prompt = `
 以下の条件でSEOに最適化された魅力的なブログタイトルを1つ生成してください：
 
 【必須要件】
@@ -160,99 +160,99 @@ ${baseTemplate}
 
 タイトルのみを出力してください。`;
 
-    const completion = await this.openai.chat.completions.create({
-      model: "gpt-5-mini",
-      messages: [
-        {
-          role: "system",
-          content: "あなたはSEOとコピーライティングの専門家です。日本のブログで高いクリック率を達成するタイトルを作成します。"
-        },
-        {
-          role: "user",
-          content: prompt
-        }
-      ],
-      max_completion_tokens: 100
-    });
+      const completion = await this.openai.chat.completions.create({
+        model: "gpt-5-mini",
+        messages: [
+          {
+            role: "system",
+            content: "あなたはSEOとコピーライティングの専門家です。日本のブログで高いクリック率を達成するタイトルを作成します。"
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        max_completion_tokens: 100
+      });
 
-    let title = completion.choices[0]?.message?.content?.trim() || baseTemplate;
+      let title = completion.choices[0]?.message?.content?.trim() || baseTemplate;
+      
+      // 文字数調整
+      title = this.adjustTitleLength(title);
+      
+      console.log('✅ SEO Title generated:', title);
+      console.log('📏 Title length:', this.getFullWidthLength(title), 'characters');
+      
+      return title;
+      
+    } catch (error) {
+      console.error('Error generating SEO title:', error);
+      // フォールバック
+      const templates = titleTemplates[category] || defaultTemplates;
+      return templates[Math.floor(Math.random() * templates.length)];
+    }
+  }
+
+  // 2. タイトル長調整メソッド
+  adjustTitleLength(title) {
+    const targetMin = 32;
+    const targetMax = 40;
+    const currentLength = this.getFullWidthLength(title);
     
-    // 文字数調整
-    title = this.adjustTitleLength(title);
-    
-    console.log('✅ SEO Title generated:', title);
-    console.log('📏 Title length:', this.getFullWidthLength(title), 'characters');
+    if (currentLength > targetMax) {
+      let truncated = '';
+      let len = 0;
+      for (let i = 0; i < title.length; i++) {
+        const charLen = title.charCodeAt(i) > 255 ? 1 : 0.5;
+        if (len + charLen > targetMax - 1.5) break;
+        truncated += title[i];
+        len += charLen;
+      }
+      return truncated + '…';
+    }
     
     return title;
-    
-  } catch (error) {
-    console.error('Error generating SEO title:', error);
-    // フォールバック
-    const templates = titleTemplates[category] || defaultTemplates;
-    return templates[Math.floor(Math.random() * templates.length)];
   }
-}
 
-// 2. タイトル長調整メソッド
-adjustTitleLength(title) {
-  const targetMin = 32;
-  const targetMax = 40;
-  const currentLength = this.getFullWidthLength(title);
-  
-  if (currentLength > targetMax) {
-    let truncated = '';
-    let len = 0;
-    for (let i = 0; i < title.length; i++) {
-      const charLen = title.charCodeAt(i) > 255 ? 1 : 0.5;
-      if (len + charLen > targetMax - 1.5) break;
-      truncated += title[i];
-      len += charLen;
+  // 3. 全角換算の文字数カウント
+  getFullWidthLength(str) {
+    let length = 0;
+    for (let i = 0; i < str.length; i++) {
+      length += str.charCodeAt(i) > 255 ? 1 : 0.5;
     }
-    return truncated + '…';
+    return Math.ceil(length);
   }
-  
-  return title;
-}
 
-// 3. 全角換算の文字数カウント
-getFullWidthLength(str) {
-  let length = 0;
-  for (let i = 0; i < str.length; i++) {
-    length += str.charCodeAt(i) > 255 ? 1 : 0.5;
+  // 4. SEO最適化されたタグ生成
+  generateSEOTags(keyword, category, title) {
+    const year = new Date().getFullYear();
+    const month = new Date().getMonth() + 1;
+    
+    // 基本タグ
+    const tags = new Set([
+      keyword,
+      `${year}年`,
+      `${year}年${month}月`,
+      '最新情報',
+      'まとめ'
+    ]);
+    
+    // カテゴリー別の追加タグ
+    const categoryTags = this.templates[category]?.tags || [];
+    categoryTags.forEach(tag => tags.add(tag));
+    
+    // タイトルから重要な単語を抽出
+    const titleWords = title
+      .replace(/[【】\[\]（）\(\)｜\|]/g, ' ')
+      .split(/[\s、。]/)
+      .filter(word => word.length > 2)
+      .filter(word => !['年', '月', '最新', 'まとめ', '選', 'TOP', 'ランキング'].includes(word));
+    
+    titleWords.forEach(word => tags.add(word));
+    
+    // 配列に変換して最大15個まで
+    return Array.from(tags).filter(tag => tag).slice(0, 15);
   }
-  return Math.ceil(length);
-}
-
-// 4. SEO最適化されたタグ生成
-generateSEOTags(keyword, category, title) {
-  const year = new Date().getFullYear();
-  const month = new Date().getMonth() + 1;
-  
-  // 基本タグ
-  const tags = new Set([
-    keyword,
-    `${year}年`,
-    `${year}年${month}月`,
-    '最新情報',
-    'まとめ'
-  ]);
-  
-  // カテゴリー別の追加タグ
-  const categoryTags = this.templates[category]?.tags || [];
-  categoryTags.forEach(tag => tags.add(tag));
-  
-  // タイトルから重要な単語を抽出
-  const titleWords = title
-    .replace(/[【】\[\]（）\(\)｜\|]/g, ' ')
-    .split(/[\s、。]/)
-    .filter(word => word.length > 2)
-    .filter(word => !['年', '月', '最新', 'まとめ', '選', 'TOP', 'ランキング'].includes(word));
-  
-  titleWords.forEach(word => tags.add(word));
-  
-  // 配列に変換して最大15個まで
-  return Array.from(tags).filter(tag => tag).slice(0, 15);
-}
 
   // XMLエスケープ（UTF-8対応）
   escapeXML(str) {
@@ -412,7 +412,7 @@ generateSEOTags(keyword, category, title) {
         content = '',
         category = 'uncategorized',
         tags = [],
-        products = [],  // ⭐ productsを取得
+        products = [],
         isProductReview = false,
         featuredImageUrl = null
       } = article;
@@ -423,7 +423,6 @@ generateSEOTags(keyword, category, title) {
       // XMLペイロード用のエスケープ（CDATAを使用）
       const escapeXML = (str) => {
         if (!str) return '';
-        // XMLの特殊文字のみエスケープ（HTMLタグは保持）
         return String(str)
           .replace(/&/g, '&amp;')
           .replace(/'/g, '&apos;')
@@ -432,7 +431,7 @@ generateSEOTags(keyword, category, title) {
       
       const processedTitle = escapeXML(title).substring(0, 200);
 
-      // ⭐ アイキャッチ画像のアップロード（250行目付近、xmlPayloadの前に追加）
+      // アイキャッチ画像のアップロード
       let featuredImageId = null;
       if (products[0]) {
         const imageUrl = products[0].imageUrl || products[0].imageURL?.large || products[0].imageURL?.small;
@@ -442,10 +441,7 @@ generateSEOTags(keyword, category, title) {
             featuredImageId = uploadResult.id;
           }
         }
-      }
-
-      // 261行目の } の後、262行目の // ⭐ カテゴリーの判定 の前に追加
-      else if (article.featuredImageUrl) {
+      } else if (article.featuredImageUrl) {
         console.log('📸 Uploading featured image for article...');
         const uploadResult = await this.uploadImageToWordPress(
           article.featuredImageUrl, 
@@ -457,12 +453,9 @@ generateSEOTags(keyword, category, title) {
         }
       }
 
-      // ⭐ カテゴリーの判定
+      // カテゴリーの判定
       const categoryId = this.determineCategory(products, title);
-      console.log(`📁 Category ID: ${categoryId}`);
-
-      // ⭐ 既存のXML（253行目からのxmlPayload）を修正
-      // post_thumbnailとtermsを追加
+      console.log(`🔍 Category ID: ${categoryId}`);
 
       // HTMLコンテンツはCDATAセクションで囲む
       const xmlPayload = `<?xml version="1.0" encoding="UTF-8"?>
@@ -579,7 +572,6 @@ generateSEOTags(keyword, category, title) {
             }
             
             if (res.statusCode === 200) {
-              // WordPress XML-RPCは通常<string>でIDを返す
               let postId = null;
               
               // パターン1: <string>ID</string>
@@ -604,26 +596,26 @@ generateSEOTags(keyword, category, title) {
               });
 
               if (postId) {
-            // Firestoreに投稿記録を保存（非同期だがawaitしない）
-            const admin = require('firebase-admin');
-            admin.firestore().collection('generatedArticles').add({
-              title: title,
-              postId: postId,
-              postUrl: `${this.siteUrl || this.wordpressUrl}/?p=${postId}`,
-              targetSite: this.siteId || 'entamade_jp',  // constructorで設定されたsiteId
-              siteName: this.siteName || 'エンタメイド',  // constructorで設定されたsiteName
-              siteUrl: this.siteUrl || this.wordpressUrl,
-              category: category,
-              tags: tags,
-              isProductReview: isProductReview,
-              featuredImageId: featuredImageId,
-              createdAt: admin.firestore.FieldValue.serverTimestamp()
-            }).then(() => {
-              console.log(`📝 Article recorded in Firestore for site: ${this.siteName}`);
-            }).catch(err => {
-              console.error('Failed to save to Firestore:', err);
-            });
-          }
+                // Firestoreに投稿記録を保存
+                const admin = require('firebase-admin');
+                admin.firestore().collection('generatedArticles').add({
+                  title: title,
+                  postId: postId,
+                  postUrl: `${this.siteUrl || this.wordpressUrl}/?p=${postId}`,
+                  targetSite: this.siteId || 'entamade_jp',
+                  siteName: this.siteName || 'エンタメイド',
+                  siteUrl: this.siteUrl || this.wordpressUrl,
+                  category: category,
+                  tags: tags,
+                  isProductReview: isProductReview,
+                  featuredImageId: featuredImageId,
+                  createdAt: admin.firestore.FieldValue.serverTimestamp()
+                }).then(() => {
+                  console.log(`📝 Article recorded in Firestore for site: ${this.siteName}`);
+                }).catch(err => {
+                  console.error('Failed to save to Firestore:', err);
+                });
+              }
               
               resolve({
                 success: true,
@@ -662,16 +654,16 @@ generateSEOTags(keyword, category, title) {
   }
 
   // generateWithGPTメソッドを修正
-async generateWithGPT(category, template) {
-  try {
-    const categoryData = this.templates[category] || this.templates.entertainment;
-    
-    // 現在の日付を取得
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth() + 1;
-    
-    const prompt = `
+  async generateWithGPT(category, template) {
+    try {
+      const categoryData = this.templates[category] || this.templates.entertainment;
+      
+      // 現在の日付を取得
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth() + 1;
+      
+      const prompt = `
 現在は${year}年${month}月です。
 ${categoryData.topic}について、${year}年${month}月時点の最新情報や話題を含む魅力的なブログ記事を作成してください。
 
@@ -693,196 +685,117 @@ ${categoryData.topic}について、${year}年${month}月時点の最新情報�
 
 記事本文のHTMLのみを出力してください。`;
 
-    const completion = await this.openai.chat.completions.create({
-      model: "gpt-5-mini",
-      messages: [
-        {
-          role: "system",
-          content: "あなたは人気ブログの専門記者です。SEOに強く、読者を引き付ける記事を書きます。最新のトレンドに詳しく、具体的な情報を提供します。"
-        },
-        {
-          role: "user",
-          content: prompt
-        }
-      ],
-      max_completion_tokens: 3000
-    });
+      const completion = await this.openai.chat.completions.create({
+        model: "gpt-5-mini",
+        messages: [
+          {
+            role: "system",
+            content: "あなたは人気ブログの専門記者です。SEOに強く、読者を引き付ける記事を書きます。最新のトレンドに詳しく、具体的な情報を提供します。"
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        max_completion_tokens: 3000
+      });
 
-    const content = this.cleanHtmlContent(completion.choices[0]?.message?.content || '');
-    console.log('✅ Content generated via GPT');
-    return content;
-    
-  } catch (error) {
-    console.error('❌ Error generating with GPT:', error);
-    throw error;
-  }
-}
-
-// メタディスクリプション生成（新規追加）
-generateMetaDescription(title, keyword) {
-  const year = new Date().getFullYear();
-  const templates = [
-    `${title}を徹底解説。${keyword}の最新情報を${year}年版でお届け。今すぐチェックして最新トレンドを把握しましょう。`,
-    `【${year}年最新】${keyword}について詳しく解説。${title}の全情報をまとめました。必見の内容です。`,
-    `${keyword}の決定版ガイド。${title}を完全網羅。${year}年の最新情報満載でお届けします。`
-  ];
-  
-  const description = templates[Math.floor(Math.random() * templates.length)];
-  return description.substring(0, 155); // 155文字以内
-}
-
-  // 記事生成（カテゴリー別）
-  async generateArticle(category = 'entertainment', options = {}) {
-  try {
-    console.log(`🚀 Generating ${category} article with SEO optimization...`);
-    
-    // キーワードの抽出または設定
-    const keyword = options.keyword || 
-                    this.templates[category]?.topic?.split('、')[0] || 
-                    category;
-    
-    // ★ 新しいSEOタイトル生成を使用
-    const title = await this.generateSEOTitle(category, keyword);
-    
-    // GPTでコンテンツ生成（既存のメソッドを使用）
-    const content = await this.generateWithGPT(category, options.template);
-    
-    console.log('✅ Article generated successfully');
-    console.log('📌 Title:', title);
-    console.log('🔑 Focus Keyword:', keyword);
-    console.log('📄 Content length:', content.length);
-    
-    // 画像生成（既存のコード）
-    let finalContent = content;
-    let featuredImageUrl = null;
-    
-    // 画像生成を有効化（デフォルトは有効）
-    if (options.generateImage !== false) {
-      try {
-        const ImageGenerator = require('./image-generator');
-        const imageGen = new ImageGenerator(this.openaiApiKey);
-        
-        // タイトルを基にした画像プロンプト
-        const imagePrompt = `Professional blog header image for ${category} article: "${title}". Modern, vibrant, high quality, digital art style, no text.`;
-        
-        console.log('🎨 Generating featured image...');
-        featuredImageUrl = await imageGen.generateImage(imagePrompt, '1792x1024', 'standard');
-        
-        if (featuredImageUrl) {
-          console.log('✅ Featured image generated');
-          const imageHtml = `<div style="text-align: center; margin: 20px 0;">
-<img src="${featuredImageUrl}" alt="${title}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
-</div>\n\n`;
-          finalContent = imageHtml + content;
-        }
-      } catch (imageError) {
-        console.error('⚠️ Image generation failed, continuing without image:', imageError.message);
-      }
+      const content = this.cleanHtmlContent(completion.choices[0]?.message?.content || '');
+      console.log('✅ Content generated via GPT');
+      return content;
+      
+    } catch (error) {
+      console.error('❌ Error generating with GPT:', error);
+      throw error;
     }
-    
-    // ★ SEO最適化されたタグを生成
-    const optimizedTags = this.generateSEOTags(keyword, category, title);
-    
-    return {
-      title: title,
-      content: finalContent,
-      keyword: keyword,  // ★ キーワードを追加
-      category: category,
-      tags: optimizedTags,
-      status: options.status || 'publish',
-      featuredImageUrl: featuredImageUrl,
-      seoData: {  // ★ SEOデータを追加
-        focusKeyphrase: keyword,
-        metaDescription: this.generateMetaDescription(title, keyword),
-        titleLength: this.getFullWidthLength(title)
-      }
-    };
-    
-  } catch (error) {
-    console.error('❌ Error generating article:', error);
-    throw error;
   }
-}
-    
-    // GPTで本文生成
-    const content = await this.generateWithGPT(category, options.template);
-    
-    // タイトル生成
-    const categoryData = this.templates[category] || this.templates.entertainment;
+
+  // メタディスクリプション生成（新規追加）
+  generateMetaDescription(title, keyword) {
     const year = new Date().getFullYear();
-    const month = new Date().getMonth() + 1;
+    const templates = [
+      `${title}を徹底解説。${keyword}の最新情報を${year}年版でお届け。今すぐチェックして最新トレンドを把握しましょう。`,
+      `【${year}年最新】${keyword}について詳しく解説。${title}の全情報をまとめました。必見の内容です。`,
+      `${keyword}の決定版ガイド。${title}を完全網羅。${year}年の最新情報満載でお届けします。`
+    ];
     
-    const titlePrompt = `
-    現在は${year}年${month}月です。
-    「${categoryData.topic}」について、${year}年のSEOに強い魅力的な記事タイトルを1つ生成してください。
-    要件：
-    - 30-50文字程度
-    - 「${year}年${month}月」を含める
-    - キャッチーで興味を引く
-    - 具体的な内容を示唆する
-    タイトルのみを出力してください。`;
-    
-    const titleCompletion = await this.openai.chat.completions.create({
-      model: "gpt-5-mini",
-      messages: [
-        {
-          role: "user",
-          content: titlePrompt
-        }
-      ],
-      max_completion_tokens: 100
-    });
-    const title = titleCompletion.choices[0]?.message?.content?.trim() || `${category}の最新情報`;
-    
-    console.log('✅ Article generated successfully');
-    console.log('Title:', title);
-    console.log('Content length:', content.length);
-    
-    // ===== 画像生成を追加（ここから） =====
-    let finalContent = content;
-    let featuredImageUrl = null;
-    
-    // 画像生成を有効にする（デフォルトは有効）
-    if (true) {
-      try {
-        const ImageGenerator = require('./image-generator');
-        const imageGen = new ImageGenerator(this.openaiApiKey);
-        
-        // カテゴリーに応じた画像プロンプト
-        const imagePrompt = `Professional blog header image for ${category} article: "${title}". Modern, vibrant, high quality, digital art style, no text.`;
-        
-        console.log('🎨 Generating featured image...');
-        featuredImageUrl = await imageGen.generateImage(imagePrompt, '1792x1024', 'standard');
-        
-        if (featuredImageUrl) {
-          console.log('✅ Featured image generated');
-          // 記事の先頭に画像を挿入
-          const imageHtml = `<div style="text-align: center; margin: 20px 0;">
+    const description = templates[Math.floor(Math.random() * templates.length)];
+    return description.substring(0, 155); // 155文字以内
+  }
+
+  // 記事生成（カテゴリー別） - 修正版（重複削除）
+  async generateArticle(category = 'entertainment', options = {}) {
+    try {
+      console.log(`🚀 Generating ${category} article with SEO optimization...`);
+      
+      // キーワードの抽出または設定
+      const keyword = options.keyword || 
+                      this.templates[category]?.topic?.split('、')[0] || 
+                      category;
+      
+      // ★ 新しいSEOタイトル生成を使用
+      const title = await this.generateSEOTitle(category, keyword);
+      
+      // GPTでコンテンツ生成（既存のメソッドを使用）
+      const content = await this.generateWithGPT(category, options.template);
+      
+      console.log('✅ Article generated successfully');
+      console.log('📌 Title:', title);
+      console.log('🔑 Focus Keyword:', keyword);
+      console.log('📄 Content length:', content.length);
+      
+      // 画像生成（既存のコード）
+      let finalContent = content;
+      let featuredImageUrl = null;
+      
+      // 画像生成を有効化（デフォルトは有効）
+      if (options.generateImage !== false) {
+        try {
+          const ImageGenerator = require('./image-generator');
+          const imageGen = new ImageGenerator(this.openaiApiKey);
+          
+          // タイトルを基にした画像プロンプト
+          const imagePrompt = `Professional blog header image for ${category} article: "${title}". Modern, vibrant, high quality, digital art style, no text.`;
+          
+          console.log('🎨 Generating featured image...');
+          featuredImageUrl = await imageGen.generateImage(imagePrompt, '1792x1024', 'standard');
+          
+          if (featuredImageUrl) {
+            console.log('✅ Featured image generated');
+            const imageHtml = `<div style="text-align: center; margin: 20px 0;">
 <img src="${featuredImageUrl}" alt="${title}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
 </div>\n\n`;
-          finalContent = imageHtml + content;
+            finalContent = imageHtml + content;
+          }
+        } catch (imageError) {
+          console.error('⚠️ Image generation failed, continuing without image:', imageError.message);
+          // 画像生成に失敗しても記事投稿は続行
         }
-      } catch (imageError) {
-        console.error('⚠️ Image generation failed, continuing without image:', imageError.message);
-        // 画像生成に失敗しても記事投稿は続行
       }
+      
+      // ★ SEO最適化されたタグを生成
+      const optimizedTags = this.generateSEOTags(keyword, category, title);
+      
+      return {
+        title: title,
+        content: finalContent,
+        keyword: keyword,  // ★ キーワードを追加
+        category: category,
+        tags: optimizedTags,
+        status: options.status || 'publish',
+        featuredImageUrl: featuredImageUrl,
+        seoData: {  // ★ SEOデータを追加
+          focusKeyphrase: keyword,
+          metaDescription: this.generateMetaDescription(title, keyword),
+          titleLength: this.getFullWidthLength(title)
+        }
+      };
+      
+    } catch (error) {
+      console.error('❌ Error generating article:', error);
+      throw error;
     }
-    // ===== 画像生成を追加（ここまで） =====
-    
-    return {
-      title: title,
-      content: finalContent,  // contentをfinalContentに変更
-      category: category,
-      tags: this.optimizeTags([], category),
-      status: options.status || 'publish',
-      featuredImageUrl: featuredImageUrl  // 画像URLも返す
-    };
-    
-  } catch (error) {
-    console.error('❌ Error generating article:', error);
-    throw error;
   }
-}
 
   // 商品レビュー記事生成
   async generateProductReview(productData, keyword, options = {}) {
@@ -970,25 +883,25 @@ HTMLタグを使用して視覚的に魅力的な記事を生成してくださ�
         console.log('OpenAI response length:', completion.choices[0].message.content.length);
 
         // completionからcontentを取得してクリーンアップ
-let content = completion.choices[0].message.content || '';
+        let content = completion.choices[0].message.content || '';
 
-// クリーンアップ処理
-content = content
-  .replace(/```html\s*\n?/gi, '')
-  .replace(/```\s*\n?/gi, '')
-  .replace(/\*\*この.*?ください。?\*\*/gi, '')
-  .replace(/このHTML.*?ください。?/gi, '')
-  .replace(/このコード.*?ください。?/gi, '')
-  .replace(/ぜひご活用ください。?/gi, '')
-  .replace(/上記.*?ください。?/gi, '')
-  .replace(/以上.*?ください。?/gi, '')
-  .replace(/以下.*?活用.*?。?/gi, '')
-  .replace(/\n{3,}/g, '\n\n')
-  .replace(/^\s*$/gm, '')
-  .trim();
+        // クリーンアップ処理
+        content = content
+          .replace(/```html\s*\n?/gi, '')
+          .replace(/```\s*\n?/gi, '')
+          .replace(/\*\*この.*?ください。?\*\*/gi, '')
+          .replace(/このHTML.*?ください。?/gi, '')
+          .replace(/このコード.*?ください。?/gi, '')
+          .replace(/ぜひご活用ください。?/gi, '')
+          .replace(/上記.*?ください。?/gi, '')
+          .replace(/以上.*?ください。?/gi, '')
+          .replace(/以下.*?活用.*?。?/gi, '')
+          .replace(/\n{3,}/g, '\n\n')
+          .replace(/^\s*$/gm, '')
+          .trim();
 
-// ★★★ contentが定義された後に商品セクションを追加 ★★★
-const productsSectionHTML = `
+        // 商品セクションを追加
+        const productsSectionHTML = `
 <h2 style="margin-top: 40px; color: #333;">📦 紹介商品詳細</h2>
 <div class="products-gallery">
 ${products.map((product, index) => {
@@ -1038,15 +951,14 @@ ${products.map((product, index) => {
 <!-- 商品ギャラリー終了 -->
 `;
 
-// ★★★ 修正箇所：不要な</div>を削除し、明確な区切りを追加 ★★★
-content = content + '\n\n' + productsSectionHTML + `
+        content = content + '\n\n' + productsSectionHTML + `
 <!-- ========== 商品エリア完全終了 ========== -->
 <div style="clear: both; display: block; height: 100px; width: 100%;"></div>
 <!-- ========== 以下、オープンチャットCTAエリア ========== -->
 `;
 
-// タイトル生成（既存のコード）
-const reviewCount = products[0].reviewCount || products[0].review?.count || '364';
+        // タイトル生成
+        const reviewCount = products[0].reviewCount || products[0].review?.count || '364';
         const title = products.length > 1 ? 
           `【${products.length}選】${keyword}のおすすめ商品を徹底比較！${new Date().getFullYear()}年最新版` :
           `【${reviewCount}人が購入】${products[0].title?.substring(0, 30)}...の詳細レビュー｜${keyword}`;
@@ -1065,7 +977,7 @@ const reviewCount = products[0].reviewCount || products[0].review?.count || '364
           tags: [keyword, 'レビュー', '比較', 'おすすめ', `${new Date().getFullYear()}年`],
           status: 'draft',
           isProductReview: true,
-          products: products  // ⭐ これを追加
+          products: products
         };
       }
       
@@ -1090,12 +1002,12 @@ const reviewCount = products[0].reviewCount || products[0].review?.count || '364
       
       return {
         title: `【${keyword}】人気商品まとめ`,
-        content: safeContentWithCTA,  // ← safeContent を safeContentWithCTA に変更
+        content: safeContentWithCTA,
         category: 'レビュー',
         tags: [keyword, 'まとめ'],
         status: 'draft',
         isProductReview: true,
-        products: products  // ⭐ これを追加
+        products: products
       };
       
     } catch (error) {
@@ -1197,92 +1109,86 @@ const reviewCount = products[0].reviewCount || products[0].review?.count || '364
   }
 
   determineCategory(products, title = '') {
-  const categoryMap = {
-    'entamade_jp': {
-      'anime': 2,
-      'book': 8, 
-      'comic': 9,
-      'FANZA': 15,
-      'products': 182,
-      'R18': 11,
-      'アニメ': 66,
-      'エンタメ': 17,
-      'グルメ': 153,
-      'ゲーム': 80,
-      'コミック': 10,
-      'テクノロジー': 106,
-      '映画': 51,
-      '美容': 32,
-      '自己啓発': 169,
-      '音楽': 121
-    },
-    'GameinfoRuka_JP': {
-      'DMM': 20,
-      'anime': 35,
-      'game': 36,
-      'コミック': 22,
-      'default': 20  // デフォルト追加
-    },
-    'honlove_JP': {
-      'entertainment': 7,
-      'anime': 8,
-      'game': 9,
-      'book': 2,
-      'コミック': 10,
-      'default': 7  // デフォルト追加
-    },
-    'AnimeBook_JP': {
-      'entertainment': 6,
-      'anime': 7,
-      'game': 8,
-      'book': 2,
-      'movie': 9,
-      'default': 6  // デフォルト追加
+    const categoryMap = {
+      'entamade_jp': {
+        'anime': 2,
+        'book': 8, 
+        'comic': 9,
+        'FANZA': 15,
+        'products': 182,
+        'R18': 11,
+        'アニメ': 66,
+        'エンタメ': 17,
+        'グルメ': 153,
+        'ゲーム': 80,
+        'コミック': 10,
+        'テクノロジー': 106,
+        '映画': 51,
+        '美容': 32,
+        '自己啓発': 169,
+        '音楽': 121
+      },
+      'GameinfoRuka_JP': {
+        'DMM': 20,
+        'anime': 35,
+        'game': 36,
+        'コミック': 22,
+        'default': 20
+      },
+      'honlove_JP': {
+        'entertainment': 7,
+        'anime': 8,
+        'game': 9,
+        'book': 2,
+        'コミック': 10,
+        'default': 7
+      },
+      'AnimeBook_JP': {
+        'entertainment': 6,
+        'anime': 7,
+        'game': 8,
+        'book': 2,
+        'movie': 9,
+        'default': 6
+      }
+    };
+    
+    // 現在のサイトのカテゴリーマップを取得
+    const siteCategories = categoryMap[this.siteId] || categoryMap['entamade_jp'];
+    console.log(`🔍 Using category map for site: ${this.siteId || 'entamade_jp'}`);
+    
+    // タイトルとproductsからテキストを作成
+    const text = (title + ' ' + products.map(p => p.title || '').join(' ')).toLowerCase();
+    
+    // カテゴリー判定（サイトごとのマップを使用）
+    if (text.includes('アニメ') || text.includes('anime')) {
+      return siteCategories['anime'] || siteCategories['アニメ'] || siteCategories['default'] || 1;
     }
-  };
-  
-  // 現在のサイトのカテゴリーマップを取得
-  const siteCategories = categoryMap[this.siteId] || categoryMap['entamade_jp'];
-  console.log(`📁 Using category map for site: ${this.siteId || 'entamade_jp'}`);
-  
-  // タイトルとproductsからテキストを作成
-  const text = (title + ' ' + products.map(p => p.title || '').join(' ')).toLowerCase();
-  
-  // カテゴリー判定（サイトごとのマップを使用）
-  if (text.includes('アニメ') || text.includes('anime')) {
-    return siteCategories['anime'] || siteCategories['アニメ'] || siteCategories['default'] || 1;
+    if (text.includes('ゲーム') || text.includes('game')) {
+      return siteCategories['game'] || siteCategories['ゲーム'] || siteCategories['default'] || 1;
+    }
+    if (text.includes('映画') || text.includes('movie')) {
+      return siteCategories['movie'] || siteCategories['映画'] || siteCategories['default'] || 1;
+    }
+    if (text.includes('本') || text.includes('book')) {
+      return siteCategories['book'] || siteCategories['default'] || 1;
+    }
+    if (text.includes('コミック') || text.includes('comic')) {
+      return siteCategories['comic'] || siteCategories['コミック'] || siteCategories['default'] || 1;
+    }
+    if (text.includes('アイドル') || text.includes('idol')) {
+      return siteCategories['idol'] || siteCategories['アイドル'] || siteCategories['default'] || 1;
+    }
+    if (text.includes('グラビア') || text.includes('gravure')) {
+      return siteCategories['gravure'] || siteCategories['グラビア'] || siteCategories['default'] || 1;
+    }
+    if (text.includes('アダルト') || text.includes('adult')) {
+      return siteCategories['R18'] || siteCategories['R18'] || siteCategories['default'] || 1;
+    }
+    
+    // デフォルトカテゴリーを返す
+    return siteCategories['default'] || siteCategories['エンタメ'] || siteCategories['entertainment'] || 1;
   }
-  if (text.includes('ゲーム') || text.includes('game')) {
-    return siteCategories['game'] || siteCategories['ゲーム'] || siteCategories['default'] || 1;
-  }
-  if (text.includes('映画') || text.includes('movie')) {
-    return siteCategories['movie'] || siteCategories['映画'] || siteCategories['default'] || 1;
-  }
-  if (text.includes('本') || text.includes('book')) {
-    return siteCategories['book'] || siteCategories['default'] || 1;
-  }
-  if (text.includes('コミック') || text.includes('comic')) {
-    return siteCategories['comic'] || siteCategories['コミック'] || siteCategories['default'] || 1;
-  }
-  if (text.includes('アイドル') || text.includes('idol')) {
-    return siteCategories['idol'] || siteCategories['アイドル'] || siteCategories['default'] || 1;
-  }
-  if (text.includes('グラビア') || text.includes('gravure')) {
-    return siteCategories['gravure'] || siteCategories['グラビア'] || siteCategories['default'] || 1;
-  }
-  if (text.includes('アダルト') || text.includes('adult')) {
-    return siteCategories['R18'] || siteCategories['R18'] || siteCategories['default'] || 1;
-  }
-  
-  // デフォルトカテゴリーを返す
-  return siteCategories['default'] || siteCategories['エンタメ'] || siteCategories['entertainment'] || 1;
-}
-
 }
 
 module.exports = BlogTool;
-
-
-
-
-
