@@ -718,6 +718,19 @@ ${categoryData.topic}について、${year}年${month}月時点の最新情報�
   }
 }
 
+// メタディスクリプション生成（新規追加）
+generateMetaDescription(title, keyword) {
+  const year = new Date().getFullYear();
+  const templates = [
+    `${title}を徹底解説。${keyword}の最新情報を${year}年版でお届け。今すぐチェックして最新トレンドを把握しましょう。`,
+    `【${year}年最新】${keyword}について詳しく解説。${title}の全情報をまとめました。必見の内容です。`,
+    `${keyword}の決定版ガイド。${title}を完全網羅。${year}年の最新情報満載でお届けします。`
+  ];
+  
+  const description = templates[Math.floor(Math.random() * templates.length)];
+  return description.substring(0, 155); // 155文字以内
+}
+
   // 記事生成（カテゴリー別）
   async generateArticle(category = 'entertainment', options = {}) {
   try {
@@ -789,19 +802,6 @@ ${categoryData.topic}について、${year}年${month}月時点の最新情報�
     console.error('❌ Error generating article:', error);
     throw error;
   }
-}
-
-// メタディスクリプション生成（新規追加）
-generateMetaDescription(title, keyword) {
-  const year = new Date().getFullYear();
-  const templates = [
-    `${title}を徹底解説。${keyword}の最新情報を${year}年版でお届け。今すぐチェックして最新トレンドを把握しましょう。`,
-    `【${year}年最新】${keyword}について詳しく解説。${title}の全情報をまとめました。必見の内容です。`,
-    `${keyword}の決定版ガイド。${title}を完全網羅。${year}年の最新情報満載でお届けします。`
-  ];
-  
-  const description = templates[Math.floor(Math.random() * templates.length)];
-  return description.substring(0, 155); // 155文字以内
 }
     
     // GPTで本文生成
