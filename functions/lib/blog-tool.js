@@ -667,18 +667,16 @@ ${baseTemplate}
 
   // generateWithGPTメソッドを修正
   async generateWithGPT(category, template) {
-    try {
-      const categoryData = this.templates[category] || this.templates.entertainment;
-      
-      // 現在の日付を取得
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = now.getMonth() + 1;
-      
-      const prompt = `
+  try {
+    const categoryData = this.templates[category] || this.templates.entertainment;
+    
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1;
+    
+    const prompt = `
 現在は${year}年${month}月です。
 ${categoryData.topic}について、${year}年${month}月時点の最新情報や話題を含む魅力的なブログ記事を作成してください。
-
 要件:
 1. 1500-2000文字程度
 2. HTML形式（h2, h3, p, ul, li, strong, emタグのみ使用）
@@ -687,7 +685,6 @@ ${categoryData.topic}について、${year}年${month}月時点の最新情報�
 5. SEOを意識した構成
 6. 読者の興味を引く内容
 7. ${year}年の具体的な情報を含める
-8. 「${year}年」という表記を適切に使用する
 
 構成:
 - 導入部分（なぜ今この話題が重要か）
@@ -697,44 +694,64 @@ ${categoryData.topic}について、${year}年${month}月時点の最新情報�
 
 記事本文のHTMLのみを出力してください。`;
 
-      const completion = await this.openai.chat.completions.create({
-        model: "gpt-5-mini",
-        messages: [
-          {
-            role: "system",
-            content: "あなたは人気ブログの専門記者です。SEOに強く、読者を引き付ける記事を書きます。最新のトレンドに詳しく、具体的な情報を提供します。"
-          },
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        max_completion_tokens: 3000
-      });
+    console.log('📝 Sending prompt to GPT...');
+    
+    const completion = await this.openai.chat.completions.create({
+      model: "gpt-5-mini",
+      messages: [
+        {
+          role: "system",
+          content: "あなたは人気ブログの専門記者です。SEOに強く、読者を引き付ける記事を書きます。"
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      max_completion_tokens: 3000
+    });
+    
+    // デバッグ：completionオブジェクト全体を確認
+    console.log('🔍 Completion object:', {
+      hasChoices: !!completion.choices,
+      choicesLength: completion.choices?.length,
+      hasFirstChoice: !!completion.choices?.[0],
+      hasMessage: !!completion.choices?.[0]?.message,
+      hasContent: !!completion.choices?.[0]?.message?.content
+    });
+    
+    const rawContent = completion.choices?.[0]?.message?.content;
+    
+    if (!rawContent) {
+      console.error('❌ No content in GPT response!');
+      console.error('Full completion:', JSON.stringify(completion, null, 2));
+      // フォールバックコンテンツを返す
+      return `
+<h2>${categoryData.topic}の基本</h2>
+<p>${year}年${month}月現在の${categoryData.topic}について解説します。</p>
 
-      // デバッグログを追加
-    const rawContent = completion.choices[0]?.message?.content || '';
+<h3>重要なポイント</h3>
+<p>${categoryData.topic}を理解する上で重要なポイントをまとめました。</p>
+
+<h2>まとめ</h2>
+<p>今回は${categoryData.topic}について解説しました。</p>
+`;
+    }
+    
     console.log('✅ GPT Response received');
     console.log('📊 Raw content length:', rawContent.length);
     console.log('🔍 First 300 chars:', rawContent.substring(0, 300));
-    
-    // ★ 重要：確実に値を返す
-    if (!rawContent) {
-      console.error('❌ No content from GPT!');
-      return ''; // 空文字を返す
-    }
-    
-    console.log('✅ Content generated via GPT - Length:', rawContent.length);
     console.log('📤 Returning content from generateWithGPT');
     
-    // cleanHtmlContentは一旦完全にスキップ
     return rawContent;
     
   } catch (error) {
     console.error('❌ Error generating with GPT:', error);
+    console.error('Error details:', error.response?.data || error.message);
     throw error;
   }
 }
+  
   // メタディスクリプション生成（新規追加）
   generateMetaDescription(title, keyword) {
     const year = new Date().getFullYear();
@@ -753,14 +770,15 @@ ${categoryData.topic}について、${year}年${month}月時点の最新情報�
   try {
     console.log(`🚀 Generating ${category} article with SEO optimization...`);
     
-    const keyword = options.keyword || this.templates[category]?.topic?.split('、')[0] || category;
+    const keyword = options.keyword || 
+                    this.templates?.[category]?.topic?.split('、')?.[0] || 
+                    category;
+    
     const title = await this.generateSEOTitle(category, keyword);
     
-    // GPTでコンテンツ生成（デバッグ追加）
     console.log('📝 Calling generateWithGPT...');
     const content = await this.generateWithGPT(category, options.template);
     
-    // ★ ここが重要！コンテンツの型と値を確認
     console.log('🔍 Content from generateWithGPT:', {
       type: typeof content,
       length: content ? content.length : 0,
@@ -770,34 +788,31 @@ ${categoryData.topic}について、${year}年${month}月時点の最新情報�
       isEmpty: content === ''
     });
     
-    // コンテンツが空の場合、エラーを投げる
-    if (!content || content.length === 0) {
-      console.error('❌ Content is empty after generateWithGPT!');
-      // フォールバックコンテンツを生成
-      const fallbackContent = `
+    // フォールバックコンテンツを返す部分
+if (!content || content.length === 0) {
+  console.error('❌ Content is empty after generateWithGPT!');
+  const fallbackContent = `
 <h2>${keyword}の基本情報</h2>
 <p>この記事では、${keyword}について詳しく解説します。${new Date().getFullYear()}年の最新情報をお届けします。</p>
 
 <h3>重要なポイント</h3>
-<p>${keyword}を理解する上で重要なポイントをまとめました。初心者の方にもわかりやすく説明していきます。</p>
-
-<h3>実践的なアドバイス</h3>
-<p>実際に${keyword}を活用する際のコツやテクニックをご紹介します。これらの方法を使えば、より効果的に結果を出すことができます。</p>
+<p>${keyword}を理解する上で重要なポイントをまとめました。</p>
 
 <h2>まとめ</h2>
-<p>${keyword}について、基本から応用まで幅広くカバーしました。この記事を参考に、ぜひ実践してみてください。</p>
+<p>${keyword}について、基本から応用まで幅広くカバーしました。</p>
 `;
-      console.log('📝 Using fallback content');
-      return {
-        title: title,
-        content: fallbackContent,
-        keyword: keyword,
-        category: category,
-        tags: this.generateTags(category),
-        status: 'publish',
-        featuredImageUrl: null
-      };
-    }
+  console.log('📝 Using fallback content');
+  
+  return {
+    title: title,
+    content: fallbackContent,
+    keyword: keyword,
+    category: category,
+    tags: this.generateTags(keyword, category, null),  // productTitleにnullを渡す
+    status: 'publish',
+    featuredImageUrl: null
+  };
+}
     
     console.log('✅ Article generated successfully');
     console.log('📌 Title:', title);
@@ -1077,9 +1092,21 @@ ${products.map((product, index) => {
   }
 
   // タグ生成の改善
-  generateTags(keyword, category, productTitle) {
-    const tags = [keyword, category];
-    
+generateTags(keyword, category, productTitle) {
+  const tags = [];
+  
+  // keywordを追加
+  if (keyword) {
+    tags.push(keyword);
+  }
+  
+  // categoryを追加
+  if (category) {
+    tags.push(category);
+  }
+  
+  // productTitleがある場合のみ処理（ここが重要！）
+  if (productTitle && typeof productTitle === 'string') {
     // アダルトキーワードは除外
     const excludeWords = ['セックス', 'エロ', '素人', 'AV', '18禁'];
     
@@ -1090,12 +1117,18 @@ ${products.map((product, index) => {
         tags.push(word);
       }
     });
-    
-    // 一般的なタグも追加
-    tags.push('レビュー', '2025年', 'おすすめ');
-    
-    return tags.slice(0, 10); // 最大10個まで
   }
+  
+  // 一般的なタグも追加
+  tags.push('レビュー', '2025年', 'おすすめ');
+  
+  // 空配列を避ける
+  if (tags.length === 0) {
+    tags.push(category || 'general', '2025年', 'おすすめ');
+  }
+  
+  return tags.slice(0, 10); // 最大10個まで
+}
 
   async uploadImageToWordPress(imageUrl, filename = 'product-image.jpg') {
     if (!imageUrl || imageUrl === '') {
