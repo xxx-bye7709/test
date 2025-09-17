@@ -267,14 +267,23 @@ ${baseTemplate}
 
   // HTMLコンテンツのクリーニング
   cleanHtmlContent(content) {
-    if (!content) return '';
-    
-    // マークダウンのコードブロック記号を除去
-    let cleaned = content
+  if (!content) return '';
+  
+  console.log('🧹 cleanHtmlContent - Input length:', content.length);
+  
+  let cleaned = content;
+  
+  // マークダウンのコードブロック記号を除去（```で囲まれた部分）
+  if (content.includes('```')) {
+    cleaned = cleaned
       .replace(/^```html?\s*\n?/gm, '')
       .replace(/\n?```\s*$/gm, '');
-    
-    // DOCTYPE、html、head、bodyタグを除去（記事本文のみ抽出）
+    console.log('🧹 Removed code blocks - length now:', cleaned.length);
+  }
+  
+  // 完全なHTMLドキュメントの場合のみクリーニング
+  if (cleaned.includes('<!DOCTYPE') || cleaned.includes('<html') || cleaned.includes('<head')) {
+    console.log('🧹 Found full HTML document, cleaning...');
     cleaned = cleaned
       .replace(/<!DOCTYPE[^>]*>/gi, '')
       .replace(/<html[^>]*>/gi, '')
@@ -284,19 +293,22 @@ ${baseTemplate}
       .replace(/<\/body>/gi, '')
       .replace(/<meta[^>]*>/gi, '')
       .replace(/<title[^>]*>[\s\S]*?<\/title>/gi, '');
-    
-    // 危険なタグを除去
-    cleaned = cleaned
-      .replace(/<script[^>]*>.*?<\/script>/gi, '')
-      .replace(/<iframe[^>]*>.*?<\/iframe>/gi, '')
-      .replace(/<object[^>]*>.*?<\/object>/gi, '')
-      .replace(/<embed[^>]*>/gi, '');
-    
-    // 余分な空白行を削除
-    cleaned = cleaned.trim();
-    
-    return cleaned;
   }
+  
+  console.log('🧹 cleanHtmlContent - Output length:', cleaned.length);
+  
+  // トリムして空白を削除
+  cleaned = cleaned.trim();
+  
+  // 結果が短すぎる場合は警告
+  if (cleaned.length < 100) {
+    console.error('❌ Cleaned content is too short!');
+    console.log('Original first 500 chars:', content.substring(0, 500));
+    console.log('Cleaned first 500 chars:', cleaned.substring(0, 500));
+  }
+  
+  return cleaned;
+}
 
   // コンテンツのサニタイズ（安全化）
   sanitizeContent(content) {
@@ -700,15 +712,31 @@ ${categoryData.topic}について、${year}年${month}月時点の最新情報�
         max_completion_tokens: 3000
       });
 
-      const content = this.cleanHtmlContent(completion.choices[0]?.message?.content || '');
-      console.log('✅ Content generated via GPT');
-      return content;
-      
-    } catch (error) {
-      console.error('❌ Error generating with GPT:', error);
-      throw error;
+      / デバッグログを追加
+    const rawContent = completion.choices[0]?.message?.content || '';
+    console.log('✅ GPT Response received');
+    console.log('📊 Raw content length:', rawContent.length);
+    console.log('🔍 Raw content preview:', rawContent.substring(0, 300));
+    
+    // cleanHtmlContentの前後でログ
+    const cleanedContent = this.cleanHtmlContent(rawContent);
+    console.log('🧹 After cleaning - length:', cleanedContent.length);
+    
+    // 空になった場合は生のコンテンツを返す
+    if (!cleanedContent || cleanedContent.length < 100) {
+      console.warn('⚠️ Content became empty after cleaning, using raw content');
+      console.log('📄 Returning raw content instead');
+      return rawContent;
     }
+    
+    console.log('✅ Content generated via GPT');
+    return cleanedContent;
+    
+  } catch (error) {
+    console.error('❌ Error generating with GPT:', error);
+    throw error;
   }
+}
 
   // メタディスクリプション生成（新規追加）
   generateMetaDescription(title, keyword) {
