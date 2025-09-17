@@ -712,7 +712,7 @@ ${categoryData.topic}について、${year}年${month}月時点の最新情報�
         max_completion_tokens: 3000
       });
 
-      / デバッグログを追加
+      // デバッグログを追加
     const rawContent = completion.choices[0]?.message?.content || '';
     console.log('✅ GPT Response received');
     console.log('📊 Raw content length:', rawContent.length);
