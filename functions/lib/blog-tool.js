@@ -716,28 +716,25 @@ ${categoryData.topic}について、${year}年${month}月時点の最新情報�
     const rawContent = completion.choices[0]?.message?.content || '';
     console.log('✅ GPT Response received');
     console.log('📊 Raw content length:', rawContent.length);
-    console.log('🔍 Raw content preview:', rawContent.substring(0, 300));
+    console.log('🔍 First 300 chars:', rawContent.substring(0, 300));
     
-    // cleanHtmlContentの前後でログ
-    const cleanedContent = this.cleanHtmlContent(rawContent);
-    console.log('🧹 After cleaning - length:', cleanedContent.length);
-    
-    // 空になった場合は生のコンテンツを返す
-    if (!cleanedContent || cleanedContent.length < 100) {
-      console.warn('⚠️ Content became empty after cleaning, using raw content');
-      console.log('📄 Returning raw content instead');
-      return rawContent;
+    // ★ 重要：確実に値を返す
+    if (!rawContent) {
+      console.error('❌ No content from GPT!');
+      return ''; // 空文字を返す
     }
     
-    console.log('✅ Content generated via GPT');
-    return cleanedContent;
+    console.log('✅ Content generated via GPT - Length:', rawContent.length);
+    console.log('📤 Returning content from generateWithGPT');
+    
+    // cleanHtmlContentは一旦完全にスキップ
+    return rawContent;
     
   } catch (error) {
     console.error('❌ Error generating with GPT:', error);
     throw error;
   }
 }
-
   // メタディスクリプション生成（新規追加）
   generateMetaDescription(title, keyword) {
     const year = new Date().getFullYear();
@@ -753,24 +750,59 @@ ${categoryData.topic}について、${year}年${month}月時点の最新情報�
 
   // 記事生成（カテゴリー別） - 修正版（重複削除）
   async generateArticle(category = 'entertainment', options = {}) {
-    try {
-      console.log(`🚀 Generating ${category} article with SEO optimization...`);
-      
-      // キーワードの抽出または設定
-      const keyword = options.keyword || 
-                      this.templates[category]?.topic?.split('、')[0] || 
-                      category;
-      
-      // ★ 新しいSEOタイトル生成を使用
-      const title = await this.generateSEOTitle(category, keyword);
-      
-      // GPTでコンテンツ生成（既存のメソッドを使用）
-      const content = await this.generateWithGPT(category, options.template);
-      
-      console.log('✅ Article generated successfully');
-      console.log('📌 Title:', title);
-      console.log('🔑 Focus Keyword:', keyword);
-      console.log('📄 Content length:', content.length);
+  try {
+    console.log(`🚀 Generating ${category} article with SEO optimization...`);
+    
+    const keyword = options.keyword || this.templates[category]?.topic?.split('、')[0] || category;
+    const title = await this.generateSEOTitle(category, keyword);
+    
+    // GPTでコンテンツ生成（デバッグ追加）
+    console.log('📝 Calling generateWithGPT...');
+    const content = await this.generateWithGPT(category, options.template);
+    
+    // ★ ここが重要！コンテンツの型と値を確認
+    console.log('🔍 Content from generateWithGPT:', {
+      type: typeof content,
+      length: content ? content.length : 0,
+      first100: content ? content.substring(0, 100) : 'EMPTY',
+      isNull: content === null,
+      isUndefined: content === undefined,
+      isEmpty: content === ''
+    });
+    
+    // コンテンツが空の場合、エラーを投げる
+    if (!content || content.length === 0) {
+      console.error('❌ Content is empty after generateWithGPT!');
+      // フォールバックコンテンツを生成
+      const fallbackContent = `
+<h2>${keyword}の基本情報</h2>
+<p>この記事では、${keyword}について詳しく解説します。${new Date().getFullYear()}年の最新情報をお届けします。</p>
+
+<h3>重要なポイント</h3>
+<p>${keyword}を理解する上で重要なポイントをまとめました。初心者の方にもわかりやすく説明していきます。</p>
+
+<h3>実践的なアドバイス</h3>
+<p>実際に${keyword}を活用する際のコツやテクニックをご紹介します。これらの方法を使えば、より効果的に結果を出すことができます。</p>
+
+<h2>まとめ</h2>
+<p>${keyword}について、基本から応用まで幅広くカバーしました。この記事を参考に、ぜひ実践してみてください。</p>
+`;
+      console.log('📝 Using fallback content');
+      return {
+        title: title,
+        content: fallbackContent,
+        keyword: keyword,
+        category: category,
+        tags: this.generateTags(category),
+        status: 'publish',
+        featuredImageUrl: null
+      };
+    }
+    
+    console.log('✅ Article generated successfully');
+    console.log('📌 Title:', title);
+    console.log('🔑 Focus Keyword:', keyword);
+    console.log('📄 Content length:', content.length);
       
       // 画像生成（既存のコード）
       let finalContent = content;
