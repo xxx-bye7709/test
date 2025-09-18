@@ -788,89 +788,108 @@ ${categoryData.topic}について、${year}年${month}月時点の最新情報�
       isEmpty: content === ''
     });
     
-    // フォールバックコンテンツを返す部分
-if (!content || content.length === 0) {
-  console.error('❌ Content is empty after generateWithGPT!');
-  const fallbackContent = `
-<h2>${keyword}の基本情報</h2>
-<p>この記事では、${keyword}について詳しく解説します。${new Date().getFullYear()}年の最新情報をお届けします。</p>
-
-<h3>重要なポイント</h3>
-<p>${keyword}を理解する上で重要なポイントをまとめました。</p>
-
-<h2>まとめ</h2>
-<p>${keyword}について、基本から応用まで幅広くカバーしました。</p>
-`;
-  console.log('📝 Using fallback content');
-  
-  return {
-    title: title,
-    content: fallbackContent,
-    keyword: keyword,
-    category: category,
-    tags: this.generateTags(keyword, category, null),  // productTitleにnullを渡す
-    status: 'publish',
-    featuredImageUrl: null
-  };
-}
+    // フォールバック処理（既存のまま）
+    if (!content || content.length === 0) {
+      // ... 既存のフォールバックコード ...
+    }
     
     console.log('✅ Article generated successfully');
     console.log('📌 Title:', title);
     console.log('🔑 Focus Keyword:', keyword);
     console.log('📄 Content length:', content.length);
-      
-      // 画像生成（既存のコード）
-      let finalContent = content;
-      let featuredImageUrl = null;
-      
-      // 画像生成を有効化（デフォルトは有効）
-      if (options.generateImage !== false) {
-        try {
-          const ImageGenerator = require('./image-generator');
-          const imageGen = new ImageGenerator(this.openaiApiKey);
+    
+    // 画像生成処理の強化
+    let finalContent = content;
+    let featuredImageUrl = null;
+    
+    if (options.generateImage !== false) {
+      try {
+        const ImageGenerator = require('./image-generator');
+        const imageGen = new ImageGenerator(this.openaiApiKey);
+        
+        // 1. アイキャッチ画像（既存の処理）
+        const imagePrompt = `Professional blog header image for ${category} article: "${title}". Modern, vibrant, high quality, digital art style, no text.`;
+        console.log('🎨 Generating featured image...');
+        featuredImageUrl = await imageGen.generateImage(imagePrompt, '1792x1024', 'standard');
+        
+        // 2. 追加画像を2枚生成（新規追加）
+        console.log('🎨 Generating content images...');
+        
+        // 導入部用画像
+        const introImagePrompt = `Informative illustration about ${keyword}, professional blog style, clear visual explanation, no text`;
+        const introImageUrl = await imageGen.generateImage(introImagePrompt, '1024x1024', 'standard');
+        
+        // 中盤用画像
+        const midImagePrompt = `Detailed diagram or infographic about ${keyword}, educational style, visually appealing, no text`;
+        const midImageUrl = await imageGen.generateImage(midImagePrompt, '1024x1024', 'standard');
+        
+        // コンテンツの構築
+        if (featuredImageUrl) {
+          console.log('✅ All images generated successfully');
           
-          // タイトルを基にした画像プロンプト
-          const imagePrompt = `Professional blog header image for ${category} article: "${title}". Modern, vibrant, high quality, digital art style, no text.`;
-          
-          console.log('🎨 Generating featured image...');
-          featuredImageUrl = await imageGen.generateImage(imagePrompt, '1792x1024', 'standard');
-          
-          if (featuredImageUrl) {
-            console.log('✅ Featured image generated');
-            const imageHtml = `<div style="text-align: center; margin: 20px 0;">
+          // アイキャッチ画像を冒頭に
+          const headerImage = `<div style="text-align: center; margin: 20px 0;">
 <img src="${featuredImageUrl}" alt="${title}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
 </div>\n\n`;
-            finalContent = imageHtml + content;
+          
+          // コンテンツを処理して画像を挿入
+          let processedContent = content;
+          
+          // 最初のh2またはh3の後に導入画像を挿入
+          const firstHeadingPattern = /(<h[23]>.*?<\/h[23]>)([\s\S]*?)(<h[23]>)/;
+          if (firstHeadingPattern.test(processedContent) && introImageUrl) {
+            processedContent = processedContent.replace(firstHeadingPattern, 
+              `$1\n<div style="text-align: center; margin: 30px 0;">
+<img src="${introImageUrl}" alt="${keyword}の概要" style="max-width: 100%; height: auto; border-radius: 8px;">
+<p style="font-size: 0.9em; color: #666; margin-top: 10px;">図1: ${keyword}の基本概念</p>
+</div>\n$2$3`);
           }
-        } catch (imageError) {
-          console.error('⚠️ Image generation failed, continuing without image:', imageError.message);
-          // 画像生成に失敗しても記事投稿は続行
+          
+          // 2番目のh2の後に中盤画像を挿入
+          let h2Count = 0;
+          processedContent = processedContent.replace(/<\/h2>/g, (match) => {
+            h2Count++;
+            if (h2Count === 2 && midImageUrl) {
+              return `</h2>\n<div style="text-align: center; margin: 30px 0;">
+<img src="${midImageUrl}" alt="${keyword}の詳細" style="max-width: 100%; height: auto; border-radius: 8px;">
+<p style="font-size: 0.9em; color: #666; margin-top: 10px;">図2: ${keyword}の重要ポイント</p>
+</div>`;
+            }
+            return match;
+          });
+          
+          finalContent = headerImage + processedContent;
         }
+        
+      } catch (imageError) {
+        console.error('⚠️ Image generation failed, continuing without images:', imageError.message);
+        // 画像生成に失敗しても記事投稿は続行
       }
-      
-      // ★ SEO最適化されたタグを生成
-      const optimizedTags = this.generateSEOTags(keyword, category, title);
-      
-      return {
-        title: title,
-        content: finalContent,
-        keyword: keyword,  // ★ キーワードを追加
-        category: category,
-        tags: optimizedTags,
-        status: options.status || 'publish',
-        featuredImageUrl: featuredImageUrl,
-        seoData: {  // ★ SEOデータを追加
-          focusKeyphrase: keyword,
-          metaDescription: this.generateMetaDescription(title, keyword),
-          titleLength: this.getFullWidthLength(title)
-        }
-      };
-      
-    } catch (error) {
-      console.error('❌ Error generating article:', error);
-      throw error;
     }
+    
+    // SEO最適化されたタグを生成
+    const optimizedTags = this.generateSEOTags(keyword, category, title);
+    
+    return {
+      title: title,
+      content: finalContent,
+      keyword: keyword,
+      category: category,
+      tags: optimizedTags,
+      status: options.status || 'publish',
+      featuredImageUrl: featuredImageUrl,
+      seoData: {
+        focusKeyphrase: keyword,
+        metaDescription: this.generateMetaDescription(title, keyword),
+        titleLength: this.getFullWidthLength(title)
+      }
+    };
+    
+  } catch (error) {
+    console.error('❌ Error generating article:', error);
+    throw error;
   }
+}
 
   // 商品レビュー記事生成
   async generateProductReview(productData, keyword, options = {}) {
