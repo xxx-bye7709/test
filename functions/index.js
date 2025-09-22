@@ -2292,6 +2292,15 @@ exports.searchProductsForDashboard = functions
           
           if (dmmResponse.data.result.items) {
             products = dmmResponse.data.result.items.map((item, index) => ({
+              // content_idから動画URLを構築
+                const contentId = item.content_id || item.product_id;
+                const constructedVideoUrl = contentId ? {
+                  size_560_360: `https://www.dmm.co.jp/litevideo/-/part/=/affi_id=entermaid-990/cid=${contentId}/size=560_360/`,
+                  size_476_306: `https://www.dmm.co.jp/litevideo/-/part/=/affi_id=entermaid-990/cid=${contentId}/size=476_306/`,
+                  size_644_414: `https://www.dmm.co.jp/litevideo/-/part/=/affi_id=entermaid-990/cid=${contentId}/size=644_414/`
+                } : null;
+  
+                return {
               id: item.content_id || `${keyword}_${page}_${index}`,
               contentId: item.content_id,
               productId: item.product_id,
