@@ -2239,13 +2239,12 @@ exports.searchProductsForDashboard = functions
   .region('asia-northeast1')
   .runWith({ timeoutSeconds: 60 })
   .https.onRequest(async (req, res) => {
-    // CORS設定（ダッシュボードからのアクセスを許可）
     const cors = require('cors')({ 
       origin: [
         'http://localhost:3000',
         'http://localhost:3001', 
         'https://blog-dashboard.vercel.app',
-        'https://blog-dashboard-*.vercel.app', // プレビューURL用
+        'https://blog-dashboard-*.vercel.app',
         'https://www.entamade.jp'
       ],
       credentials: true 
@@ -2264,7 +2263,6 @@ exports.searchProductsForDashboard = functions
         
         console.log(`Dashboard product search: ${keyword}, limit: ${limit}, page: ${page}`);
         
-        // DMM API呼び出し
         const axios = require('axios');
         const dmmParams = {
           api_id: process.env.DMM_API_ID,
@@ -2275,7 +2273,7 @@ exports.searchProductsForDashboard = functions
           keyword: keyword,
           hits: parseInt(limit),
           offset: (parseInt(page) - 1) * parseInt(limit) + 1,
-          sort: '-rank', // 人気順
+          sort: '-rank',
           output: 'json'
         };
         
@@ -2290,47 +2288,44 @@ exports.searchProductsForDashboard = functions
         if (dmmResponse.data?.result) {
           totalCount = dmmResponse.data.result.result_count || 0;
           
-          if (dmmResponse.data?.result?.items) {
-  products = dmmResponse.data.result.items.map((item, index) => {
-    // content_idから動画URLを構築
-    const contentId = item.content_id || item.product_id;
-    const constructedVideoUrl = contentId ? {
-      size_560_360: `https://www.dmm.co.jp/litevideo/-/part/=/affi_id=entermaid-990/cid=${contentId}/size=560_360/`,
-      size_476_306: `https://www.dmm.co.jp/litevideo/-/part/=/affi_id=entermaid-990/cid=${contentId}/size=476_306/`,
-      size_644_414: `https://www.dmm.co.jp/litevideo/-/part/=/affi_id=entermaid-990/cid=${contentId}/size=644_414/`
-    } : null;
+          if (dmmResponse.data.result.items) {
+            products = dmmResponse.data.result.items.map((item, index) => {
+              const contentId = item.content_id || item.product_id;
+              const constructedVideoUrl = contentId ? {
+                size_560_360: `https://www.dmm.co.jp/litevideo/-/part/=/affi_id=entermaid-990/cid=${contentId}/size=560_360/`,
+                size_476_306: `https://www.dmm.co.jp/litevideo/-/part/=/affi_id=entermaid-990/cid=${contentId}/size=476_306/`,
+                size_644_414: `https://www.dmm.co.jp/litevideo/-/part/=/affi_id=entermaid-990/cid=${contentId}/size=644_414/`
+              } : null;
 
-    return {
-      id: item.content_id || `${keyword}_${page}_${index}`,
-      contentId: item.content_id,
-      productId: item.product_id,
-      title: item.title || '商品名不明',
-      price: item.prices?.price || item.price || '価格不明',
-      listPrice: item.prices?.list_price || null,
-      imageUrl: item.imageURL?.large || item.imageURL?.small || null,
-      thumbnailUrl: item.imageURL?.small || item.imageURL?.list || null,
-      affiliateUrl: item.affiliateURL || item.URL,
-      description: item.iteminfo?.series?.[0]?.name || 
-                  item.iteminfo?.label?.[0]?.name || 
-                  item.comment || '',
-      maker: item.iteminfo?.maker?.[0]?.name || '',
-      genre: item.iteminfo?.genre?.map(g => g.name).join(', ') || '',
-      actress: item.iteminfo?.actress?.map(a => a.name).join(', ') || '',
-      director: item.iteminfo?.director?.[0]?.name || '',
-      rating: item.review?.average || 0,
-      reviewCount: item.review?.count || 0,
-      releaseDate: item.date || '',
-      duration: item.volume || '',
-      sampleImages: item.sampleImageURL?.sample_s || item.imageURL?.list || [],
-      sampleMovie: item.sampleMovieURL?.size_560_360 || 
-                   item.sampleMovieURL?.size_476_306 || 
-                   item.sampleMovieURL?.size_644_414 || 
-                   item.sampleMovieURL?.size_720_480 || 
-                   constructedVideoUrl?.size_560_360 || null,
-      sampleMovieURL: item.sampleMovieURL || constructedVideoUrl
-    };
-  }); 
-}
+              return {
+                id: item.content_id || `${keyword}_${page}_${index}`,
+                contentId: item.content_id,
+                productId: item.product_id,
+                title: item.title || '商品名不明',
+                price: item.prices?.price || item.price || '価格不明',
+                listPrice: item.prices?.list_price || null,
+                imageUrl: item.imageURL?.large || item.imageURL?.small || null,
+                thumbnailUrl: item.imageURL?.small || item.imageURL?.list || null,
+                affiliateUrl: item.affiliateURL || item.URL,
+                description: item.iteminfo?.series?.[0]?.name || 
+                            item.iteminfo?.label?.[0]?.name || 
+                            item.comment || '',
+                maker: item.iteminfo?.maker?.[0]?.name || '',
+                genre: item.iteminfo?.genre?.map(g => g.name).join(', ') || '',
+                actress: item.iteminfo?.actress?.map(a => a.name).join(', ') || '',
+                director: item.iteminfo?.director?.[0]?.name || '',
+                rating: item.review?.average || 0,
+                reviewCount: item.review?.count || 0,
+                releaseDate: item.date || '',
+                duration: item.volume || '',
+                sampleImages: item.sampleImageURL?.sample_s || [],
+                sampleMovie: item.sampleMovieURL?.size_560_360 || 
+                            constructedVideoUrl?.size_560_360 || null,
+                sampleMovieURL: item.sampleMovieURL || constructedVideoUrl
+              };
+            });
+          }
+        }
         
         res.status(200).json({
           success: true,
