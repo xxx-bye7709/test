@@ -1217,7 +1217,7 @@ ${products.map((product, index) => {
     ` : ''}
   </div>
   
-  ${/* 購入ボタン（アフィリエイトID付き） */}
+  <!-- 購入ボタン（アフィリエイトID付き） -->
   <div style="text-align: center; margin-top: 25px;">
     <a href="${affiliateUrl}${affiliateUrl.includes('?') ? '&' : '?'}aff_id=entermaid-990" 
        target="_blank" 
