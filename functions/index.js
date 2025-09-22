@@ -2291,48 +2291,48 @@ exports.searchProductsForDashboard = functions
           totalCount = dmmResponse.data.result.result_count || 0;
           
           if (dmmResponse.data.result.items) {
-            products = dmmResponse.data.result.items.map((item, index) => ({
-              // content_idから動画URLを構築
-                const contentId = item.content_id || item.product_id;
-                const constructedVideoUrl = contentId ? {
-                  size_560_360: `https://www.dmm.co.jp/litevideo/-/part/=/affi_id=entermaid-990/cid=${contentId}/size=560_360/`,
-                  size_476_306: `https://www.dmm.co.jp/litevideo/-/part/=/affi_id=entermaid-990/cid=${contentId}/size=476_306/`,
-                  size_644_414: `https://www.dmm.co.jp/litevideo/-/part/=/affi_id=entermaid-990/cid=${contentId}/size=644_414/`
-                } : null;
-  
-                return {
-              id: item.content_id || `${keyword}_${page}_${index}`,
-              contentId: item.content_id,
-              productId: item.product_id,
-              title: item.title || '商品名不明',
-              price: item.prices?.price || item.price || '価格不明',
-              listPrice: item.prices?.list_price || null,
-              imageUrl: item.imageURL?.large || item.imageURL?.small || null,
-              thumbnailUrl: item.imageURL?.small || item.imageURL?.list || null,
-              affiliateUrl: item.affiliateURL || item.URL,
-              description: item.iteminfo?.series?.[0]?.name || 
-                          item.iteminfo?.label?.[0]?.name || 
-                          item.comment || '',
-              maker: item.iteminfo?.maker?.[0]?.name || '',
-              genre: item.iteminfo?.genre?.map(g => g.name).join(', ') || '',
-              actress: item.iteminfo?.actress?.map(a => a.name).join(', ') || '',
-              director: item.iteminfo?.director?.[0]?.name || '',
-              rating: item.review?.average || 0,
-              reviewCount: item.review?.count || 0,
-              releaseDate: item.date || '',
-              duration: item.volume || '',
-              sampleImages: item.sampleImageURL?.sample_s || item.imageURL?.list || [],
-              // ★動画サンプルURLの正しいマッピング
-              sampleMovie: item.sampleMovieURL?.size_560_360 || 
-               item.sampleMovieURL?.size_476_306 || 
-               item.sampleMovieURL?.size_644_414 || 
-               item.sampleMovieURL?.size_720_480 || null,
-  
-                // ★sampleMovieURLオブジェクト全体も保存
-                sampleMovieURL: item.sampleMovieURL || null
-            }));
-          }
-        }
+            products = dmmResponse.data.result.items.map((item, index) => {
+  // content_idから動画URLを構築
+  const contentId = item.content_id || item.product_id;
+  const constructedVideoUrl = contentId ? {
+    size_560_360: `https://www.dmm.co.jp/litevideo/-/part/=/affi_id=entermaid-990/cid=${contentId}/size=560_360/`,
+    size_476_306: `https://www.dmm.co.jp/litevideo/-/part/=/affi_id=entermaid-990/cid=${contentId}/size=476_306/`,
+    size_644_414: `https://www.dmm.co.jp/litevideo/-/part/=/affi_id=entermaid-990/cid=${contentId}/size=644_414/`
+  } : null;
+
+  return {
+    id: item.content_id || `${keyword}_${page}_${index}`,
+    contentId: item.content_id,
+    productId: item.product_id,
+    title: item.title || '商品名不明',
+    price: item.prices?.price || item.price || '価格不明',
+    listPrice: item.prices?.list_price || null,
+    imageUrl: item.imageURL?.large || item.imageURL?.small || null,
+    thumbnailUrl: item.imageURL?.small || item.imageURL?.list || null,
+    affiliateUrl: item.affiliateURL || item.URL,
+    description: item.iteminfo?.series?.[0]?.name || 
+                item.iteminfo?.label?.[0]?.name || 
+                item.comment || '',
+    maker: item.iteminfo?.maker?.[0]?.name || '',
+    genre: item.iteminfo?.genre?.map(g => g.name).join(', ') || '',
+    actress: item.iteminfo?.actress?.map(a => a.name).join(', ') || '',
+    director: item.iteminfo?.director?.[0]?.name || '',
+    rating: item.review?.average || 0,
+    reviewCount: item.review?.count || 0,
+    releaseDate: item.date || '',
+    duration: item.volume || '',
+    sampleImages: item.sampleImageURL?.sample_s || item.imageURL?.list || [],
+    // ★動画サンプルURLの正しいマッピング
+    sampleMovie: item.sampleMovieURL?.size_560_360 || 
+                 item.sampleMovieURL?.size_476_306 || 
+                 item.sampleMovieURL?.size_644_414 || 
+                 item.sampleMovieURL?.size_720_480 || 
+                 constructedVideoUrl?.size_560_360 || null,
+    
+    // ★sampleMovieURLオブジェクト全体も保存
+    sampleMovieURL: item.sampleMovieURL || constructedVideoUrl
+  };
+});
         
         res.status(200).json({
           success: true,
