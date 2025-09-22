@@ -764,7 +764,114 @@ ${categoryData.topic}について、${year}年${month}月時点の最新情報�
     const description = templates[Math.floor(Math.random() * templates.length)];
     return description.substring(0, 155); // 155文字以内
   }
+  
+  /**
+   * 最適な動画サイズを選択
+   * @param {Object} product - DMM商品データ
+   * @param {string} deviceType - デバイスタイプ（desktop/mobile/auto）
+   * @returns {string} 動画URL
+   */
+  getOptimalVideoSize(product, deviceType = 'auto') {
+    // 動画URLオブジェクトを取得
+    const movieUrls = product.sampleMovieURL || {};
+    
+    // 利用可能なサイズを確認
+    const availableSizes = {
+      small: movieUrls.size_476_306,
+      medium: movieUrls.size_560_360,
+      large: movieUrls.size_644_414,
+      xlarge: movieUrls.size_720_480
+    };
+    
+    console.log('Available video sizes:', Object.keys(availableSizes).filter(key => availableSizes[key]));
+    
+    // デバイスタイプが'auto'の場合、記事の表示幅から判定
+    if (deviceType === 'auto') {
+      // ビューポート幅に基づいて自動選択（実際にはサーバーサイドなので大きめを選択）
+      return availableSizes.large || availableSizes.medium || availableSizes.small || availableSizes.xlarge;
+    }
+    
+    // モバイル向け（小〜中サイズ優先）
+    if (deviceType === 'mobile') {
+      return availableSizes.small || availableSizes.medium || availableSizes.large || availableSizes.xlarge;
+    }
+    
+    // デスクトップ向け（大サイズ優先）
+    if (deviceType === 'desktop') {
+      return availableSizes.large || availableSizes.xlarge || availableSizes.medium || availableSizes.small;
+    }
+    
+    // タブレット向け（中サイズ優先）
+    if (deviceType === 'tablet') {
+      return availableSizes.medium || availableSizes.large || availableSizes.small || availableSizes.xlarge;
+    }
+    
+    // フォールバック：最初に見つかったものを返す
+    return availableSizes.large || availableSizes.medium || availableSizes.small || availableSizes.xlarge || '';
+  }
 
+  /**
+   * 動画プレイヤーHTMLを生成
+   * @param {Object} product - DMM商品データ
+   * @param {Object} options - オプション設定
+   * @returns {string} HTML文字列
+   */
+  generateVideoPlayerHTML(product, options = {}) {
+    const {
+      deviceType = 'auto',
+      showTitle = true,
+      showControls = true,
+      autoplay = false,
+      affiliateId = this.dmmAffiliateId || 'entermaid-990'
+    } = options;
+    
+    // 最適な動画URLを取得
+    const videoUrl = this.getOptimalVideoSize(product, deviceType);
+    
+    if (!videoUrl) {
+      console.log('No video sample available for:', product.title);
+      return '';
+    }
+    
+    // アフィリエイトIDを付与
+    const videoUrlWithAffiliate = `${videoUrl}${videoUrl.includes('?') ? '&' : '?'}aff_id=${affiliateId}`;
+    
+    return `
+    <div style="margin: 30px 0; padding: 20px; background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.2);">
+      ${showTitle ? `
+      <h4 style="color: #fff; margin-bottom: 15px; text-align: center; font-size: 1.2em;">
+        🎬 無料サンプル動画
+      </h4>
+      ` : ''}
+      
+      <div style="position: relative; padding-top: 56.25%; background: #000; border-radius: 8px; overflow: hidden;">
+        <iframe 
+          src="${videoUrlWithAffiliate}" 
+          style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;"
+          frameborder="0" 
+          allowfullscreen
+          scrolling="no"
+          ${autoplay ? 'autoplay' : ''}>
+        </iframe>
+      </div>
+      
+      ${showControls ? `
+      <div style="display: flex; justify-content: center; gap: 10px; margin-top: 15px;">
+        <button onclick="this.parentElement.previousElementSibling.querySelector('iframe').requestFullscreen()" 
+                style="padding: 8px 16px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">
+          全画面表示
+        </button>
+      </div>
+      ` : ''}
+      
+      <p style="color: #ccc; font-size: 0.85em; text-align: center; margin-top: 10px;">
+        ※再生ボタンをクリックで視聴開始
+      </p>
+    </div>
+    `;
+  }
+
+  
   // 記事生成（カテゴリー別） - 修正版（重複削除）
   async generateArticle(category = 'entertainment', options = {}) {
   try {
