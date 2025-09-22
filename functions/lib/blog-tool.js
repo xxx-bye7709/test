@@ -994,14 +994,23 @@ HTMLタグを使用して視覚的に魅力的な記事を生成してくださ�
           .replace(/^\s*$/gm, '')
           .trim();
 
-        // 商品セクションを追加
-        const productsSectionHTML = `
+        // ★改良版：動画サンプル付き商品セクションHTML
+      const productsSectionHTML = `
 <h2 style="margin-top: 40px; color: #333;">📦 紹介商品詳細</h2>
 <div class="products-gallery">
 ${products.map((product, index) => {
-  const imageUrl = product.imageUrl || product.imageURL || product.image || '';
+  const imageUrl = product.imageUrl || product.imageURL?.large || product.imageURL?.small || '';
   const affiliateUrl = product.affiliateUrl || product.affiliateURL || product.url || '#';
   const price = product.price || product.prices?.price || '価格不明';
+  
+  // ★動画サンプルURL（複数サイズから選択）
+  const sampleMovieUrl = product.sampleMovieURL?.size_560_360 || 
+                        product.sampleMovieURL?.size_476_306 ||
+                        product.sampleMovieURL?.size_644_414 ||
+                        product.sampleMovie || '';
+  
+  // ★サンプル画像配列
+  const sampleImages = product.sampleImageURL?.sample_s || product.sampleImages || [];
   
   return `
 <div style="margin: 30px 0; padding: 25px; border: 2px solid #4CAF50; border-radius: 12px; background: #f9f9f9;">
@@ -1009,7 +1018,8 @@ ${products.map((product, index) => {
     【商品${index + 1}】${product.title || '商品名'}
   </h3>
   
-  ${imageUrl ? `
+  ${/* メイン画像 */
+  imageUrl ? `
   <div style="text-align: center; margin: 20px 0;">
     <img src="${imageUrl}" 
          alt="${product.title || '商品画像'}" 
@@ -1017,35 +1027,135 @@ ${products.map((product, index) => {
   </div>
   ` : ''}
   
+  ${/* ★無料動画サンプル埋め込み - DMMプレイヤー対応 */
+  sampleMovieUrl ? `
+  <div style="margin: 30px 0; padding: 20px; background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.2);">
+    <h4 style="color: #fff; margin-bottom: 15px; text-align: center; font-size: 1.2em;">
+      🎬 無料サンプル動画をチェック
+    </h4>
+    <div style="position: relative; padding-top: 56.25%; background: #000; border-radius: 8px; overflow: hidden;">
+      <iframe 
+        src="${sampleMovieUrl}?aff_id=entermaid-990" 
+        style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;"
+        frameborder="0" 
+        allowfullscreen
+        scrolling="no">
+      </iframe>
+    </div>
+    <p style="color: #ccc; font-size: 0.85em; text-align: center; margin-top: 10px;">
+      ※再生ボタンをクリックで視聴開始 | 全画面表示対応
+    </p>
+  </div>
+  ` : ''}
+  
+  ${/* ★サンプル画像ギャラリー */
+  sampleImages && sampleImages.length > 0 ? `
+  <div style="margin: 25px 0; padding: 15px; background: white; border-radius: 8px;">
+    <h4 style="color: #333; margin-bottom: 15px; font-size: 1.1em;">
+      📸 サンプル画像（${sampleImages.length}枚）
+    </h4>
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px;">
+      ${sampleImages.slice(0, 6).map((img, idx) => `
+        <div style="position: relative; padding-top: 150%; background: #f5f5f5; border-radius: 4px; overflow: hidden;">
+          <img src="${img}" 
+               style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; cursor: pointer;"
+               alt="サンプル画像${idx + 1}"
+               onclick="window.open('${img}', '_blank')">
+        </div>
+      `).join('')}
+    </div>
+    ${sampleImages.length > 6 ? `
+    <p style="text-align: center; color: #666; margin-top: 10px; font-size: 0.9em;">
+      他${sampleImages.length - 6}枚のサンプル画像は商品ページでご覧いただけます
+    </p>
+    ` : ''}
+  </div>
+  ` : ''}
+  
   <div style="background: white; padding: 15px; border-radius: 8px; margin: 15px 0;">
     <p style="font-size: 1.4em; color: #e74c3c; font-weight: bold; margin: 10px 0;">
       💰 価格: ${price}
     </p>
+    ${product.listPrice && product.listPrice !== price ? `
+    <p style="color: #666;">
+      <span style="text-decoration: line-through;">定価: ${product.listPrice}</span>
+      <span style="color: #4CAF50; font-weight: bold; margin-left: 10px;">
+        ${Math.round((1 - parseFloat(price.replace(/[^0-9]/g, '')) / parseFloat(product.listPrice.replace(/[^0-9]/g, ''))) * 100)}%OFF！
+      </span>
+    </p>
+    ` : ''}
+    ${product.review?.average ? `
+    <p>⭐ 評価: ${product.review.average}/5.0 (${product.review.count}件のレビュー)</p>
+    ` : ''}
+    ${product.volume || product.duration ? `
+    <p>⏱ 収録時間: ${product.volume || product.duration}</p>
+    ` : ''}
+    ${product.date ? `
+    <p>📅 配信開始日: ${product.date}</p>
+    ` : ''}
+    ${product.iteminfo?.genre ? `
+    <p>📂 ジャンル: ${product.iteminfo.genre.map(g => g.name).join(', ')}</p>
+    ` : ''}
+    ${product.iteminfo?.actress ? `
+    <p>👤 出演: ${product.iteminfo.actress.map(a => a.name).join(', ')}</p>
+    ` : ''}
+    ${product.iteminfo?.director ? `
+    <p>🎬 監督: ${product.iteminfo.director.map(d => d.name).join(', ')}</p>
+    ` : ''}
+    ${product.iteminfo?.maker ? `
+    <p>🏢 メーカー: ${product.iteminfo.maker.map(m => m.name).join(', ')}</p>
+    ` : ''}
+    ${product.iteminfo?.label ? `
+    <p>🏷️ レーベル: ${product.iteminfo.label.map(l => l.name).join(', ')}</p>
+    ` : ''}
   </div>
   
+  ${/* 購入ボタン（アフィリエイトID付き） */}
   <div style="text-align: center; margin-top: 25px;">
-    <a href="${affiliateUrl}" 
+    <a href="${affiliateUrl}${affiliateUrl.includes('?') ? '&' : '?'}aff_id=entermaid-990" 
        target="_blank" 
        rel="noopener noreferrer"
        style="display: inline-block; 
-              padding: 15px 50px; 
-              background: linear-gradient(45deg, #4CAF50, #45a049); 
+              padding: 18px 60px; 
+              background: linear-gradient(45deg, #FF6B6B, #FF5252); 
               color: white; 
               text-decoration: none; 
               border-radius: 50px; 
-              font-size: 1.1em; 
-              font-weight: bold;">
-      🛒 詳細を見る・購入する
+              font-size: 1.2em; 
+              font-weight: bold;
+              box-shadow: 0 6px 20px rgba(255,107,107,0.4);
+              transition: all 0.3s;">
+      🛒 詳細を見る・今すぐ購入
     </a>
   </div>
+  
+  ${/* 動画があれば追加CTA */
+  sampleMovieUrl ? `
+  <div style="text-align: center; margin-top: 15px;">
+    <p style="color: #666; font-size: 0.9em;">
+      ↑ サンプル動画を見て気に入ったらぜひチェック！
+    </p>
+  </div>
+  ` : ''}
 </div>
 `;
 }).join('\n')}
 </div>
-<!-- 商品ギャラリー終了 -->
+
+<!-- 購入前の注意事項 -->
+<div style="margin-top: 40px; padding: 20px; background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%); border-radius: 12px; border: 2px solid #ff9800;">
+  <h4 style="margin-top: 0; color: #e65100;">💡 ご購入前のご案内</h4>
+  <ul style="margin: 10px 0; padding-left: 20px; color: #424242; line-height: 1.8;">
+    <li>価格や在庫状況は変動する場合があります</li>
+    <li>詳細情報は各商品ページでご確認ください</li>
+    <li>動画サンプルは一部のみの公開です</li>
+    <li>購入後のダウンロード方法は商品ページをご確認ください</li>
+    ${products.length > 1 ? '<li>複数購入の場合はまとめ買い割引が適用される場合があります</li>' : ''}
+  </ul>
+</div>
 `;
 
-        content = content + '\n\n' + productsSectionHTML + `
+      content = content + '\n\n' + productsSectionHTML + `
 <!-- ========== 商品エリア完全終了 ========== -->
 <div style="clear: both; display: block; height: 100px; width: 100%;"></div>
 <!-- ========== 以下、オープンチャットCTAエリア ========== -->
