@@ -3076,6 +3076,102 @@ exports.testSimplePost = functions
     }
   });
 
+  // 動画検出テスト関数
+exports.testVideoDetection = functions
+  .region('asia-northeast1')
+  .https.onRequest(async (req, res) => {
+    res.set('Access-Control-Allow-Origin', '*');
+    
+    try {
+      const BlogTool = require('./lib/blog-tool');
+      const blogTool = new BlogTool();
+      
+      // テスト用商品データ（動画あり）
+      const testProduct = {
+        title: "テスト商品",
+        price: "2980円",
+        sampleMovieURL: {
+          size_560_360: "https://example.com/sample_560.mp4",
+          size_476_306: "https://example.com/sample_476.mp4"
+        }
+      };
+      
+      // 動画URL検出テスト
+      const sampleMovieUrl = testProduct.sampleMovieURL?.size_560_360 || 
+                             testProduct.sampleMovieURL?.size_476_306 ||
+                             testProduct.sampleMovieURL?.size_644_414 ||
+                             testProduct.sampleMovie || 
+                             null;
+      
+      res.json({
+        success: true,
+        hasVideo: !!sampleMovieUrl,
+        videoUrl: sampleMovieUrl,
+        productData: testProduct
+      });
+      
+    } catch (error) {
+      res.status(500).json({ 
+        success: false, 
+        error: error.message 
+      });
+    }
+  });
+
+// DMM商品データ構造確認関数
+exports.debugProductData = functions
+  .region('asia-northeast1')
+  .https.onRequest(async (req, res) => {
+    res.set('Access-Control-Allow-Origin', '*');
+    
+    try {
+      const axios = require('axios');
+      const functions = require('firebase-functions');
+      
+      // DMM API呼び出し
+      const dmmParams = {
+        api_id: process.env.DMM_API_ID || functions.config().dmm?.api_id,
+        affiliate_id: process.env.DMM_AFFILIATE_ID || functions.config().dmm?.affiliate_id,
+        site: 'FANZA',
+        service: 'digital',
+        floor: 'videoa',
+        keyword: req.query.keyword || 'テスト',
+        hits: 1,
+        output: 'json'
+      };
+      
+      console.log('DMM API params:', dmmParams);
+      
+      const response = await axios.get('https://api.dmm.com/affiliate/v3/ItemList', {
+        params: dmmParams,
+        timeout: 10000
+      });
+      
+      const item = response.data?.result?.items?.[0];
+      
+      res.json({
+        success: true,
+        keyword: req.query.keyword || 'テスト',
+        hasSampleMovieURL: !!item?.sampleMovieURL,
+        sampleMovieURLKeys: item?.sampleMovieURL ? Object.keys(item.sampleMovieURL) : [],
+        sampleMovieURL: item?.sampleMovieURL,
+        imageURL: item?.imageURL,
+        title: item?.title,
+        price: item?.prices,
+        // フル商品データ（デバッグ用）
+        fullItem: item
+      });
+      
+    } catch (error) {
+      console.error('Debug error:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: error.message,
+        details: error.response?.data
+      });
+    }
+  });
+
 // ========================================
 // ヘルパー関数
 // ========================================
