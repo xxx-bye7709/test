@@ -1897,6 +1897,31 @@ if (imageUrl) {
       } else {
         console.log('⚠️ No image URL provided');
       }
+
+      const sampleVideoUrl = productsToProcess[0]?.sampleMovie || 
+                       productsToProcess[0]?.sampleMovieURL?.size_560_360 ||
+                       productsToProcess[0]?.sampleMovieURL?.size_476_306;
+
+if (sampleVideoUrl) {
+  console.log('🎬 Inserting sample video:', sampleVideoUrl);
+  
+  const videoHtml = `
+<div class="sample-video" style="text-align: center; margin: 40px 0; padding: 30px; background: #f5f5f5; border-radius: 12px;">
+  <h3 style="margin-bottom: 20px;">📹 動画プレビュー</h3>
+  <video controls autoplay muted loop style="max-width: 100%; width: 560px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+    <source src="${sampleVideoUrl}" type="video/mp4">
+  </video>
+</div>`;
+  
+  // 記事の適切な位置に動画を挿入
+  const h3End = article.content.indexOf('</h3>');
+  if (h3End !== -1) {
+    article.content = 
+      article.content.slice(0, h3End + 5) + 
+      videoHtml + 
+      article.content.slice(h3End + 5);
+  }
+}
       
       // ★アフィリエイトボタン（複数箇所に配置）
       const affiliateUrl = productsToProcess[0]?.affiliateUrl || productsToProcess[0]?.affiliateURL || productsToProcess[0]?.url;
@@ -2649,6 +2674,31 @@ ${products.map((p, index) => {
         <p style="margin: 0; color: #555; line-height: 1.6;">${p.description}</p>
       </div>
       ` : ''}
+
+        // ★動画埋め込み部分を追加
+  const sampleVideoUrl = p.sampleMovie || p.sampleMovieURL?.size_560_360 || p.sampleMovieURL?.size_476_306;
+  const videoSection = sampleVideoUrl ? `
+    <div style="margin: 20px 0; padding: 20px; background: #f9f9f9; border-radius: 8px;">
+      <h4 style="margin-bottom: 15px; color: #ff4444;">
+        ▶️ サンプル動画
+      </h4>
+      <video controls muted loop style="width: 100%; max-width: 560px; height: auto; border-radius: 4px;">
+        <source src="${sampleVideoUrl}" type="video/mp4">
+        お使いのブラウザは動画再生に対応していません
+      </video>
+    </div>
+  ` : '';
+  
+  return `
+<div class="product-item" style="...">
+  ${rankBadge}
+  <div style="...">
+    ${imageUrl ? `...` : ''}
+    <div style="flex-grow: 1;">
+      <!-- 既存の商品情報 -->
+      ...
+      
+      ${videoSection}  <!-- ★ここに動画セクションを挿入 -->
       
       <div style="margin-top: 20px;">
         <a href="${affiliateUrl}" target="_blank" rel="noopener noreferrer" 
