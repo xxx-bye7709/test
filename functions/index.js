@@ -1796,6 +1796,25 @@ exports.generateProductReview = functions
   })
   .https.onRequest(async (req, res) => {
     console.log('=== generateProductReview START ===');
+
+    // ★ リクエストデータの詳細ログを追加
+    console.log('📦 Request body:', JSON.stringify(req.body, null, 2));
+    console.log('📦 Request method:', req.method);
+    
+    try {
+      const BlogTool = require('./lib/blog-tool');
+      const blogTool = new BlogTool();
+      
+      const requestData = req.body || {};
+      
+      // ★ 受信データの詳細確認
+      console.log('📦 Received data structure:', {
+        hasProducts: !!requestData.products,
+        hasProduct: !!requestData.product,
+        productsLength: requestData.products?.length,
+        firstProductKeys: requestData.products?.[0] ? Object.keys(requestData.products[0]) : 'no products',
+        hasSampleMovieURL: !!requestData.products?.[0]?.sampleMovieURL
+      });
     
     // CORS設定
     res.set('Access-Control-Allow-Origin', '*');
