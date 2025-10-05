@@ -1796,8 +1796,19 @@ exports.generateProductReview = functions
   })
   .https.onRequest(async (req, res) => {
     console.log('=== generateProductReview START ===');
+    
+    // CORS設定（最初に設定）
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type');
+    res.set('Content-Type', 'application/json; charset=utf-8');
+    
+    if (req.method === 'OPTIONS') {
+      res.status(204).send('');
+      return;
+    }
 
-    // ★ リクエストデータの詳細ログを追加
+    // ★ リクエストデータの詳細ログ
     console.log('📦 Request body:', JSON.stringify(req.body, null, 2));
     console.log('📦 Request method:', req.method);
     
@@ -1815,51 +1826,29 @@ exports.generateProductReview = functions
         firstProductKeys: requestData.products?.[0] ? Object.keys(requestData.products[0]) : 'no products',
         hasSampleMovieURL: !!requestData.products?.[0]?.sampleMovieURL
       });
-    
-    // CORS設定
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type');
-    res.set('Content-Type', 'application/json; charset=utf-8');
-    
-    if (req.method === 'OPTIONS') {
-      res.status(204).send('');
-      return;
-    }
-
-    try {
-      const BlogTool = require('./lib/blog-tool');
-      const blogTool = new BlogTool();
-      
-      const requestData = req.body || {};
       
       const {
-        products = [],  // ⭐ 複数商品配列に変更
+        products = [],
         keyword = 'レビュー',
         autoPost = true
       } = requestData;
 
-      // 後方互換性のため、productsToProcess[0]?も確認
+      // 後方互換性
       const productsToProcess = products.length > 0 ? products : 
-                         requestData.product ? [requestData.product] : [];
+                               requestData.product ? [requestData.product] : [];
 
       console.log(`📦 Processing ${productsToProcess.length} products`);
       
-      console.log('Product data received:', {
-  hasTitle: !!productsToProcess[0]?.title,
-  hasPrice: !!productsToProcess[0]?.price,
-  hasImageUrl: !!productsToProcess[0]?.imageUrl,
-  hasAffiliateUrl: !!productsToProcess[0]?.affiliateUrl
-});
+      // 以下、既存の処理を続ける（重複部分は削除）
       
       // 記事生成
       const article = await blogTool.generateProductReview(
-        productsToProcess,  // 配列を渡す
-          keyword,
-          { autoPost }
-        );
+        productsToProcess,
+        keyword,
+        { autoPost }
+      );
 
-      // 複数商品のHTMLセクションを生成して追加
+      // 複数商品のHTMLセクション生成
       if (productsToProcess.length > 0) {
         const productHTML = generateProductSection(productsToProcess, 'review');
         article.content = article.content + '\n\n' + productHTML;
@@ -2040,7 +2029,8 @@ if (sampleVideoUrl) {
         postId: postResult.postId || null,
         postUrl: postResult.url || null,
         postSuccess: postResult.success || false,
-        hasImage: !!imageUrl,
+        hasImage: !!productsToProcess[0]?.imageUrl,
+        hasSampleMovie: !!productsToProcess[0]?.sampleMovieURL,
         message: postResult.success ? 'Posted successfully' : 'Article generated but posting failed',
         postError: postResult.error || null
       };
