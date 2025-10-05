@@ -1003,6 +1003,18 @@ async generateProductReview(productData, keyword, options = {}) {
   try {
     console.log('🎯 Generating HIGH CVR product review article...');
     console.log('Product data received:', JSON.stringify(productData, null, 2));
+
+    // 📌 ここに追加
+    const products = Array.isArray(productData) ? productData : [productData];
+    console.log('🎬 Video URL Debug:', {
+      productCount: products.length,
+      firstProduct: products[0] ? {
+        title: products[0].title,
+        hasSampleMovieURL: !!products[0].sampleMovieURL,
+        sampleMovieURLKeys: products[0].sampleMovieURL ? Object.keys(products[0].sampleMovieURL) : [],
+        actualURLs: products[0].sampleMovieURL || 'none'
+      } : 'no products'
+    });
     
     // 複数商品の処理
     const products = Array.isArray(productData) ? productData : [productData];
@@ -1112,6 +1124,11 @@ HTMLタグを使用して視覚的に魅力的な記事を生成してくださ�
                              products[0]?.sampleMovieURL?.size_644_414 ||
                              products[0]?.sampleMovie || 
                              null;
+
+      // 📌 デバッグログを追加
+      console.log('🎥 Selected video URL:', sampleMovieUrl ? 'Found' : 'Not found', {
+        url: sampleMovieUrl ? sampleMovieUrl.substring(0, 100) + '...' : 'null'
+      });
       
       // ★動画有無のログ
       if (sampleMovieUrl) {
