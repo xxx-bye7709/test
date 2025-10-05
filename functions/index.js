@@ -2322,6 +2322,9 @@ exports.searchProductsForDashboard = functions
                 size_644_414: `https://www.dmm.co.jp/litevideo/-/part/=/affi_id=entermaid-990/cid=${contentId}/size=644_414/`
               } : null;
 
+              // 現在のコードは正しく実装されているのでそのまま使用
+              sampleMovieURL: item.sampleMovieURL || constructedVideoUrl || null
+
               return {
                 id: item.content_id || `${keyword}_${page}_${index}`,
                 contentId: item.content_id,
