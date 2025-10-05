@@ -10,13 +10,23 @@ export async function POST(req: NextRequest) {
 
     // 商品データの正規化
     const normalizedProducts = products.map((product: any) => ({
-      title: product.title || '',
-      price: product.price || '',
-      affiliateUrl: product.affiliateURL || product.affiliateUrl || '',
-      imageUrl: product.imageURL?.large || product.imageURL?.small || '',
-      description: product.description || '',
-      rating: product.rating || '4.5'
-    }));
+  title: product.title || '',
+  price: product.price || '',
+  affiliateUrl: product.affiliateURL || product.affiliateUrl || '',
+  imageUrl: product.imageURL?.large || product.imageURL?.small || '',
+  description: product.description || '',
+  rating: product.rating || '4.5',
+  // ⭐ 動画関連フィールドを追加
+  sampleMovieURL: product.sampleMovieURL || null,
+  sampleMovie: product.sampleMovie || null,
+  contentId: product.contentId || null,
+  productId: product.productId || null,
+  genre: product.genre || '',
+  maker: product.maker || '',
+  actress: product.actress || '',
+  reviewCount: product.reviewCount || 0,
+  duration: product.duration || ''
+}));
 
     // OpenAI API呼び出し（エラーハンドリング付き）
     let content = '';
@@ -87,19 +97,18 @@ ${normalizedProducts.map((p, i) => `
 
     // WordPress投稿
     if (autoPost) {
-      // Firebase Functions経由で投稿
-      const wpResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_FIREBASE_FUNCTIONS_URL}/generateProductReview`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            productData: normalizedProducts[0],
-            keyword: keyword,
-            autoPost: true
-          })
-        }
-      );
+  const wpResponse = await fetch(
+    `${process.env.NEXT_PUBLIC_FIREBASE_FUNCTIONS_URL}/generateProductReview`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        products: normalizedProducts,  // ⭐ productDataではなくproducts（複数）
+        keyword: keyword,
+        autoPost: true
+      })
+    }
+  );
       
       const wpResult = await wpResponse.json();
       return NextResponse.json({
