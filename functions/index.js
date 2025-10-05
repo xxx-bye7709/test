@@ -2599,7 +2599,73 @@ ${p.description}
 
 // ===== 3. ヘルパー関数: 商品セクションHTML生成 =====
 // index.js の generateProductSection 関数を修正（1834行目付近）
-generateProductSection
+function generateProductSection(products, articleType) {
+  // generateProductSectionWithVideoを呼び出す
+  return generateProductSectionWithVideo(products, articleType);
+}
+
+// ===== 3. ヘルパー関数: 商品セクションHTML生成（動画対応版） =====
+function generateProductSectionWithVideo(products, articleType) {
+  const sectionTitle = articleType === 'ranking' 
+    ? '🏆 ランキング詳細' 
+    : articleType === 'comparison'
+    ? '📊 商品比較表'
+    : '⭐ おすすめ商品詳細';
+  
+  return `
+<h2>${sectionTitle}</h2>
+<div class="product-list" style="margin-top: 30px;">
+${products.map((p, index) => {
+  const affiliateUrl = p.affiliateUrl || p.affiliateURL || p.url || '#';
+  const imageUrl = p.imageUrl || p.imageURL || p.thumbnailUrl || '';
+  
+  // ★動画埋め込みHTML（重要）
+  const videoHtml = p.sampleMovieURL && (p.sampleMovieURL.size_560_360 || p.sampleMovieURL.size_476_306) ? `
+  <div style="margin: 25px 0; padding: 20px; background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); border-radius: 8px;">
+    <h4 style="color: #fff; margin-bottom: 15px; text-align: center;">
+      🎬 無料サンプル動画
+    </h4>
+    <div style="position: relative; padding-top: 56.25%;">
+      <iframe 
+        src="${p.sampleMovieURL.size_560_360 || p.sampleMovieURL.size_476_306}" 
+        style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"
+        frameborder="0" 
+        allowfullscreen>
+      </iframe>
+    </div>
+  </div>
+  ` : '';
+  
+  return `
+<div class="product-item" style="margin-bottom: 30px; padding: 25px; border: 3px solid #4CAF50; border-radius: 12px;">
+  <h3>${articleType === 'ranking' ? `【第${index + 1}位】` : `【商品${index + 1}】`} ${p.title || '商品名'}</h3>
+  
+  ${imageUrl ? `
+  <div style="text-align: center; margin: 20px 0;">
+    <img src="${imageUrl}" alt="${p.title || ''}" style="max-width: 300px;">
+  </div>
+  ` : ''}
+  
+  <p><strong>価格:</strong> ${p.price || '価格不明'}</p>
+  ${p.genre ? `<p><strong>ジャンル:</strong> ${p.genre}</p>` : ''}
+  ${p.rating > 0 ? `<p><strong>評価:</strong> ⭐${p.rating}/5.0</p>` : ''}
+  
+  ${videoHtml}
+  
+  <div style="text-align: center; margin-top: 20px;">
+    <a href="${affiliateUrl}" target="_blank" rel="noopener noreferrer" 
+       style="display: inline-block; padding: 14px 40px; background: #4CAF50; 
+              color: white; text-decoration: none; border-radius: 30px; 
+              font-weight: bold;">
+      🛒 詳細を見る
+    </a>
+  </div>
+</div>
+`;
+}).join('')}
+</div>
+`;
+}
   
 // index.jsの最後に以下の関数を追加してください
 
