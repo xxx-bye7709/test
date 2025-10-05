@@ -1016,9 +1016,6 @@ async generateProductReview(productData, keyword, options = {}) {
       } : 'no products'
     });
     
-    // 複数商品の処理
-    const products = Array.isArray(productData) ? productData : [productData];
-    console.log(`Processing ${products.length} products`);
     
     // ★商品タイプ判定ログ（VRコンテンツなど）
     if (products[0]?.service === 'vr' || products[0]?.floor === 'vr') {
