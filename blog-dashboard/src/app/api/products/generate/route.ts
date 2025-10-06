@@ -14,18 +14,10 @@ export async function POST(req: NextRequest) {
   price: product.price || '',
   affiliateUrl: product.affiliateURL || product.affiliateUrl || '',
   imageUrl: product.imageURL?.large || product.imageURL?.small || '',
-  description: product.description || '',
-  rating: product.rating || '4.5',
-  // ⭐ 動画関連フィールドを追加
-  sampleMovieURL: product.sampleMovieURL || null,
-  sampleMovie: product.sampleMovie || null,
-  contentId: product.contentId || null,
-  productId: product.productId || null,
-  genre: product.genre || '',
-  maker: product.maker || '',
-  actress: product.actress || '',
-  reviewCount: product.reviewCount || 0,
-  duration: product.duration || ''
+  videoUrl: product.videoUrl || null,  // 追加
+  contentId: product.contentId || null,  // 追加
+  hasVideo: product.hasVideo || false,  // 追加
+  rating: product.rating || '4.5'
 }));
 
     // OpenAI API呼び出し（エラーハンドリング付き）
