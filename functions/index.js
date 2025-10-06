@@ -2325,15 +2325,14 @@ exports.searchProductsForDashboard = functions
           if (dmmResponse.data.result.items) {
             products = dmmResponse.data.result.items.map((item, index) => {
               const contentId = item.content_id || item.product_id;
-              const constructedVideoUrl = contentId ? {
-                size_560_360: `https://www.dmm.co.jp/litevideo/-/part/=/affi_id=entermaid-990/cid=${contentId}/size=560_360/`,
-                size_476_306: `https://www.dmm.co.jp/litevideo/-/part/=/affi_id=entermaid-990/cid=${contentId}/size=476_306/`,
-                size_644_414: `https://www.dmm.co.jp/litevideo/-/part/=/affi_id=entermaid-990/cid=${contentId}/size=644_414/`
-              } : null;
-
+              
+              // ⭐ 動画URLを確実に生成（APIが返さない場合でも）
+              const videoUrl = contentId ? 
+                `https://www.dmm.co.jp/litevideo/-/part/=/affi_id=entermaid-990/cid=${contentId}/size=720_480/` : null;
+              
               return {
-                id: item.content_id || `${keyword}_${page}_${index}`,
-                contentId: item.content_id,
+                id: contentId || `${keyword}_${page}_${index}`,
+                contentId: contentId,
                 productId: item.product_id,
                 title: item.title || '商品名不明',
                 price: item.prices?.price || item.price || '価格不明',
@@ -2353,9 +2352,14 @@ exports.searchProductsForDashboard = functions
                 releaseDate: item.date || '',
                 duration: item.volume || '',
                 sampleImages: item.sampleImageURL?.sample_s || [],
-                sampleMovie: item.sampleMovieURL?.size_560_360 || 
-                            constructedVideoUrl?.size_560_360 || null,
-                sampleMovieURL: item.sampleMovieURL || constructedVideoUrl || null  // ← return内に移動！
+                
+                // ⭐ シンプルな動画URL設定
+                videoUrl: videoUrl,  // 自動生成された動画URL
+                hasVideo: !!contentId,  // 動画の有無フラグ
+                
+                // 後方互換性のために残す
+                sampleMovie: item.sampleMovieURL?.size_560_360 || videoUrl,
+                sampleMovieURL: item.sampleMovieURL || { size_720_480: videoUrl }
               };
             });
           }
